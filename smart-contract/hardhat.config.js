@@ -1,5 +1,6 @@
-require("@nomicfoundation/hardhat-toolbox");
+import "@nomicfoundation/hardhat-toolbox";
 
-module.exports = {
+/** @type import('hardhat/config').HardhatUserConfig */
+export default {
   solidity: "0.8.20",
 };

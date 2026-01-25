@@ -72,13 +72,13 @@ export const mockNFTs: NFT[] = [
     price: 1.9,
     owner: '0x3e7d...9a21',
     creator: '0x7c8b...4f56',
-    category: 'Abstract',
+    category: 'Gaming',
     status: 'buy-now',
     likes: 189,
     description: 'An abstract exploration of light, color, and digital consciousness.',
     royalties: 5,
     properties: [
-      { trait: 'Style', value: 'Abstract' },
+      { trait: 'Style', value: 'Gaming' },
       { trait: 'Mood', value: 'Ethereal' },
       { trait: 'Colors', value: 'Rainbow' }
     ],
@@ -167,5 +167,5 @@ export const mockNFTs: NFT[] = [
   }
 ];
 
-export const categories = ['All', 'Art', 'Gaming', 'Photography', 'Abstract', 'Music'];
+export const categories = ['All', 'Art', 'Gaming', 'Photography', 'Music'];
 

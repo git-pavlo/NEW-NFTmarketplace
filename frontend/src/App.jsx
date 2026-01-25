@@ -12,14 +12,16 @@ import { motion } from 'motion/react';
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
   const [selectedNFTId, setSelectedNFTId] = useState('1');
+  const [NFTstatus, setNFTSatus] = useState("nothing")
   const { isConnected, address } = useAccount();
 
-  const handleNavigate = (page, nftId) => {
+  const handleNavigate = (page, nftId, NFTstatus) => {
     setCurrentPage(page);
     if (nftId) {
       setSelectedNFTId(nftId);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+    setNFTSatus(NFTstatus);
   };
 
   const renderSection = () => {
@@ -81,7 +83,7 @@ export default function App() {
         );
 
       default:
-        return <NFTDetailPage nftId={selectedNFTId} onNavigate={handleNavigate} />;
+        return <NFTDetailPage nftId={selectedNFTId} onNavigate={handleNavigate} NFTstatus={NFTstatus} />;
     }
   };
 

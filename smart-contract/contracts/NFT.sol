@@ -4,7 +4,6 @@ pragma solidity ^0.8.20;
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 contract NFT is ERC721URIStorage, IERC2981, Ownable {
     uint256 public tokenCount;
@@ -26,14 +25,13 @@ contract NFT is ERC721URIStorage, IERC2981, Ownable {
         address royaltyReceiver,
         uint96 royaltyFee
     ) external returns (uint256) {
-        require(royaltyFee <= 1000, "Royalty too high");
+        require(royaltyFee <= 1000, "Max 10%");
 
         tokenCount++;
         _safeMint(msg.sender, tokenCount);
         _setTokenURI(tokenCount, tokenURI);
 
         _royalties[tokenCount] = Royalty(royaltyReceiver, royaltyFee);
-
         return tokenCount;
     }
 

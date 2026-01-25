@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Upload, Image as ImageIcon, Video, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
@@ -6,7 +6,7 @@ import { ethers } from 'ethers';
 import axios from 'axios';
 import NFT_ABI from '../abis/NFT.json';
 
-const CONTRACT_ADDRESS = '0x68B1D87F95878fE05B998F19b66F4baba5De1aed';
+const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
 
 // ⚠️ demo only – move to backend for production
 const PINATA_API_KEY = '18233f0e183ee1001af1';
@@ -16,11 +16,12 @@ export default function CreateNFTPage() {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [gallery, setGallery] = useState([]);
 
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    category: '',
+    category: 'Art',
     royalties: 5
   });
 
@@ -52,7 +53,7 @@ export default function CreateNFTPage() {
           pinata_api_key: PINATA_API_KEY,
           pinata_secret_api_key: PINATA_SECRET_KEY
         }
-      }
+      } 
     );
 
     return `https://gateway.pinata.cloud/ipfs/${res.data.IpfsHash}`;
@@ -86,49 +87,74 @@ export default function CreateNFTPage() {
   };
 
   // -------------------------
-  // Mint NFT
+  // Mint NFT & auto-add to MetaMask
   // -------------------------
   const handleMint = async () => {
-    if (!uploadedFile || !formData.name) {
-      toast.error('Missing required fields');
-      return;
-    }
+    if (!uploadedFile || !formData.name) return toast.error('Missing fields');
+    if (!window.ethereum) return toast.error('MetaMask not detected');
 
     try {
       setLoading(true);
-      toast.loading('Uploading to IPFS...');
 
-      // 1️⃣ Upload image/video
-      const fileUrl = await uploadFileToIPFS();
-
-      // 2️⃣ Upload metadata
-      const tokenURI = await uploadMetadataToIPFS(fileUrl);
-
-      toast.loading('Minting NFT...');
-
-      // 3️⃣ Mint NFT
+      // Setup provider & signer
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const wallet = await signer.getAddress();
+      const contract = new ethers.Contract(CONTRACT_ADDRESS, NFT_ABI.abi, signer);
 
-      const contract = new ethers.Contract(
-        CONTRACT_ADDRESS,
-        NFT_ABI.abi,
-        signer
-      );
+      // Upload file & metadata
+      const fileUrl = await uploadFileToIPFS();
+      const tokenURI = await uploadMetadataToIPFS(fileUrl);
 
+      // Convert royalties to basis points
       const royaltyBps = Math.floor(formData.royalties * 100);
 
-      const tx = await contract.mint(
-        tokenURI,
-        wallet,
-        royaltyBps
-      );
+      // Mint NFT
+      const tx = await contract.mint(tokenURI, wallet, royaltyBps);
+      const receipt = await tx.wait();
 
-      await tx.wait();
+      // Parse Transfer event safely
+      const transferEvent = receipt.logs
+        .map(log => {
+          try {
+            return contract.interface.parseLog(log);
+          } catch {
+            return null;
+          }
+        })
+        .find(event => event && event.name === 'Transfer');
 
-      toast.success('NFT Minted Successfully 🚀');
+      if (!transferEvent) {
+        console.warn('Transfer event not found. NFT minted but MetaMask watchAsset skipped.');
+        toast.success('NFT minted! Add it manually in MetaMask.');
+      } else {
+        const tokenId = transferEvent.args.tokenId.toString();
+        const contractAddress = contract.address;
 
+        if (contractAddress && tokenId) {
+          try {
+            await window.ethereum.request({
+              method: 'wallet_watchAsset',
+              params: {
+                type: 'ERC721',
+                options: {
+                  address: contractAddress,
+                  tokenId: tokenId,
+                  symbol: 'NNFT',
+                  image: fileUrl,
+                },
+              },
+            });
+            toast.success(`NFT #${tokenId} minted and added to MetaMask! 🎉`);
+          } catch (watchErr) {
+            console.warn('MetaMask watchAsset failed:', watchErr);
+            toast.info(`NFT #${tokenId} minted! Add it manually in MetaMask.`);
+          }
+        }
+      }
+
+      // Refresh gallery
+      fetchGallery(contract);
     } catch (err) {
       console.error(err);
       toast.error('Mint failed');
@@ -136,6 +162,52 @@ export default function CreateNFTPage() {
       setLoading(false);
     }
   };
+
+  // -------------------------
+  // Fetch all minted NFTs for gallery
+  // -------------------------
+  const fetchGallery = async (contractInstance) => {
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const contract = contractInstance || new ethers.Contract(CONTRACT_ADDRESS, NFT_ABI.abi, provider);
+
+      const totalBigInt = await contract.tokenCount();
+      const total = Number(totalBigInt);
+      const items = [];
+
+      for (let i = 1; i <= total; i++) {
+        try {
+          const tokenURI = await contract.tokenURI(i);
+          let metadata = {};
+
+          if (tokenURI.startsWith('data:application/json;base64,')) {
+            const json = atob(tokenURI.replace('data:application/json;base64,', ''));
+            metadata = JSON.parse(json);
+          } else {
+            const res = await fetch(tokenURI);
+            metadata = await res.json();
+          }
+
+          const royaltyInfo = await contract.royaltyInfo(i, 1000);
+          items.push({
+            tokenId: i,
+            ...metadata,
+            royalty: Number(royaltyInfo[1]) / 10000
+          });
+        } catch (err) {
+          console.error('Error fetching token', i, err);
+        }
+      }
+
+      setGallery(items);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  useEffect(() => {
+    if (window.ethereum) fetchGallery();
+  }, []);
 
   return (
     <div className="min-h-screen pt-24 px-4 pb-20">
@@ -149,9 +221,7 @@ export default function CreateNFTPage() {
           <h1 className="text-4xl md:text-5xl mb-4">
             Create <span className="neon-text">Your NFT</span>
           </h1>
-          <p className="text-gray-400">
-            Upload your artwork and mint it as an NFT
-          </p>
+          <p className="text-gray-400">Upload your artwork and mint it as an NFT</p>
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -163,7 +233,6 @@ export default function CreateNFTPage() {
           >
             <div className="glassmorphism rounded-3xl p-6">
               <h3 className="text-xl mb-4">Upload File</h3>
-
               <motion.label whileHover={{ scale: 1.02 }} className="block relative">
                 <input
                   type="file"
@@ -171,7 +240,6 @@ export default function CreateNFTPage() {
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-
                 {!previewUrl ? (
                   <div className="border-2 border-dashed border-[rgba(138,106,255,0.3)] rounded-2xl p-12 text-center cursor-pointer hover:border-[rgba(138,106,255,0.6)] transition-all">
                     <motion.div
@@ -181,9 +249,7 @@ export default function CreateNFTPage() {
                       <Upload className="w-10 h-10" />
                     </motion.div>
                     <p className="text-lg mb-2">Drop your file here, or browse</p>
-                    <p className="text-sm text-gray-400">
-                      PNG, JPG, GIF, MP4, Max 100MB
-                    </p>
+                    <p className="text-sm text-gray-400">PNG, JPG, GIF, MP4, Max 100MB</p>
                   </div>
                 ) : (
                   <div className="relative rounded-2xl overflow-hidden group">
@@ -205,7 +271,6 @@ export default function CreateNFTPage() {
                   </div>
                 )}
               </motion.label>
-
               {uploadedFile && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -324,10 +389,11 @@ export default function CreateNFTPage() {
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               onClick={handleMint}
+              disabled={loading}
               className="button-glow w-full py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white flex items-center justify-center gap-2"
             >
               <Sparkles className="w-5 h-5" />
-              Mint NFT
+              {loading ? "Minting..." : "Mint NFT"}
             </motion.button>
 
             <p className="text-center text-sm text-gray-400">

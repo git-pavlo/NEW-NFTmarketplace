@@ -1,18 +1,15 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Heart, Share2, MoreHorizontal, TrendingUp, Clock } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import { mockNFTs, type NFT } from '../lib/mockData';
+import { mockNFTs } from '../lib/mockData';
 import { toast } from 'sonner@2.0.3';
 
-interface NFTDetailPageProps {
-  nftId: string;
-  onNavigate: (page: string) => void;
-}
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function NFTDetailPage({ nftId, onNavigate }: NFTDetailPageProps) {
-  const [nft, setNft] = useState<NFT | null>(null);
-  const [activeTab, setActiveTab] = useState<'properties' | 'history' | 'details'>('properties');
+export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
+  const [nft, setNft] = useState(null);
+  const [activeTab, setActiveTab] = useState('properties');
+  console.log(NFTstatus);
 
   useEffect(() => {
     const foundNft = mockNFTs.find((n) => n.id === nftId);
@@ -22,6 +19,15 @@ export default function NFTDetailPage({ nftId, onNavigate }: NFTDetailPageProps)
   if (!nft) return null;
 
   const handleBuy = () => {
+    console.log("hi")
+    toast.success('Purchase Initiated!', {
+      description: 'Please confirm the transaction in your wallet',
+      duration: 3000
+    });
+  };
+
+  const handleSale = () => {
+    console.log("hisale")
     toast.success('Purchase Initiated!', {
       description: 'Please confirm the transaction in your wallet',
       duration: 3000
@@ -153,17 +159,81 @@ export default function NFTDetailPage({ nftId, onNavigate }: NFTDetailPageProps)
                 )}
               </div>
 
-              {/* Buy/Bid Buttons */}
-              <div className="flex gap-3">
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={nft.status === 'auction' ? handleBid : handleBuy}
-                  className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
-                >
-                  {nft.status === 'auction' ? 'Place Bid' : 'Buy Now'}
-                </motion.button>
-                {nft.status === 'auction' && (
+              {/* Buttons */}
+              {NFTstatus === 'sale' && (
+              <div className='flex gap-3'>
+                <div className="glassmorphism flex-1 py-4 px-4 rounded-2xl">
+                  <input
+                    type="text"
+                    placeholder="input eth"
+                    className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all my-4 mb-4"
+                  />
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleSale}
+                    className="w-full button-glow flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                  >
+                    sale
+                  </motion.button>
+                </div>
+                <div className="glassmorphism flex-1 py-4 px-4 rounded-2xl">
+                  <div className='w-full rounded-2xl focus-glow transition-all my-4 flex gap-3 mb-4'>
+                    <input
+                      type="text"
+                      placeholder="input eth"
+                      className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all my-4"
+                    />
+                    <input
+                      type="text"
+                      placeholder="input times"
+                      className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all my-4"
+                    />
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    // onClick={handleAuction}
+                    className="w-full button-glow flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                  >
+                    auction
+                  </motion.button>
+                </div>
+              </div>
+              )}
+              {NFTstatus === 'cancel' && (
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                  >
+                    cancel
+                  </motion.button>
+                </div>
+              )}
+              {NFTstatus === 'buynow' && (
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleBuy}
+                    className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                  >
+                    Buy Now
+                  </motion.button>
+                </div>
+              )}
+              {NFTstatus === 'auction' && (
+                <div className="flex gap-3">
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleBid}
+                    className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                  >
+                    Place Bid
+                  </motion.button>
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -171,8 +241,9 @@ export default function NFTDetailPage({ nftId, onNavigate }: NFTDetailPageProps)
                   >
                     View Bids
                   </motion.button>
-                )}
-              </div>
+                </div>
+              )}
+
             </div>
 
             {/* Price History Chart */}
@@ -188,7 +259,9 @@ export default function NFTDetailPage({ nftId, onNavigate }: NFTDetailPageProps)
                     dataKey="date"
                     stroke="#9ca3af"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    tickFormatter={(value) =>
+                      new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                    }
                   />
                   <YAxis stroke="#9ca3af" tick={{ fontSize: 12 }} />
                   <Tooltip
@@ -218,7 +291,7 @@ export default function NFTDetailPage({ nftId, onNavigate }: NFTDetailPageProps)
                   <motion.button
                     key={tab}
                     whileHover={{ backgroundColor: 'rgba(138, 106, 255, 0.1)' }}
-                    onClick={() => setActiveTab(tab as any)}
+                    onClick={() => setActiveTab(tab)}
                     className={`flex-1 py-4 capitalize transition-colors ${
                       activeTab === tab ? 'text-[#8a6aff] border-b-2 border-[#8a6aff]' : 'text-gray-400'
                     }`}
@@ -277,7 +350,7 @@ export default function NFTDetailPage({ nftId, onNavigate }: NFTDetailPageProps)
                     animate={{ opacity: 1, y: 0 }}
                     className="space-y-3"
                   >
-                    {[
+                    {[ 
                       { action: 'Listed', price: nft.price, from: nft.owner, date: '2 hours ago' },
                       { action: 'Minted', price: 0, from: nft.creator, date: '1 day ago' }
                     ].map((event, index) => (
