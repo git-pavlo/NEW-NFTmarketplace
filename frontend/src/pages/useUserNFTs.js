@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 import { getNFTContract, getMarketContract } from '@/utils/contract';
+import { categories } from '@/lib/mockData';
 
 export function useUserNFTs(userAddress) {
   const [collectedNFTs, setCollected] = useState([]);
@@ -31,7 +32,8 @@ export function useUserNFTs(userAddress) {
             id: tokenId,
             image: meta.image,
             name: meta.name,
-            description: meta.description
+            description: meta.description,
+            categories: meta.categories
           };
 
           if (owner.toLowerCase() === userAddress.toLowerCase()) {

@@ -67,9 +67,7 @@ export default function CreateNFTPage() {
       name: formData.name,
       description: formData.description,
       image: fileUrl,
-      attributes: [
-        { trait_type: 'Category', value: formData.category }
-      ]
+      categories: formData.category,
     };
 
     const res = await axios.post(
@@ -112,46 +110,47 @@ export default function CreateNFTPage() {
       // Mint NFT
       const tx = await contract.mint(tokenURI, wallet, royaltyBps);
       const receipt = await tx.wait();
+      console.log(tokenURI)
 
       // Parse Transfer event safely
-      const transferEvent = receipt.logs
-        .map(log => {
-          try {
-            return contract.interface.parseLog(log);
-          } catch {
-            return null;
-          }
-        })
-        .find(event => event && event.name === 'Transfer');
+      // const transferEvent = receipt.logs
+      //   .map(log => {
+      //     try {
+      //       return contract.interface.parseLog(log);
+      //     } catch {
+      //       return null;
+      //     }
+      //   })
+      //   .find(event => event && event.name === 'Transfer');
 
-      if (!transferEvent) {
-        console.warn('Transfer event not found. NFT minted but MetaMask watchAsset skipped.');
-        toast.success('NFT minted! Add it manually in MetaMask.');
-      } else {
-        const tokenId = transferEvent.args.tokenId.toString();
-        const contractAddress = contract.address;
+      // if (!transferEvent) {
+      //   console.warn('Transfer event not found. NFT minted but MetaMask watchAsset skipped.');
+      //   toast.success('NFT minted! Add it manually in MetaMask.');
+      // } else {
+      //   const tokenId = transferEvent.args.tokenId.toString();
+      //   const contractAddress = contract.address;
 
-        if (contractAddress && tokenId) {
-          try {
-            await window.ethereum.request({
-              method: 'wallet_watchAsset',
-              params: {
-                type: 'ERC721',
-                options: {
-                  address: contractAddress,
-                  tokenId: tokenId,
-                  symbol: 'NNFT',
-                  image: fileUrl,
-                },
-              },
-            });
-            toast.success(`NFT #${tokenId} minted and added to MetaMask! 🎉`);
-          } catch (watchErr) {
-            console.warn('MetaMask watchAsset failed:', watchErr);
-            toast.info(`NFT #${tokenId} minted! Add it manually in MetaMask.`);
-          }
-        }
-      }
+      //   if (contractAddress && tokenId) {
+      //     try {
+      //       await window.ethereum.request({
+      //         method: 'wallet_watchAsset',
+      //         params: {
+      //           type: 'ERC721',
+      //           options: {
+      //             address: contractAddress,
+      //             tokenId: tokenId,
+      //             symbol: 'NNFT',
+      //             image: fileUrl,
+      //           },
+      //         },
+      //       });
+      //       toast.success(`NFT #${tokenId} minted and added to MetaMask! 🎉`);
+      //     } catch (watchErr) {
+      //       console.warn('MetaMask watchAsset failed:', watchErr);
+      //       toast.info(`NFT #${tokenId} minted! Add it manually in MetaMask.`);
+      //     }
+      //   }
+      // }
 
       // Refresh gallery
       fetchGallery(contract);

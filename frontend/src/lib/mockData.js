@@ -1,20 +1,4 @@
-export interface NFT {
-  id: string;
-  name: string;
-  image: string;
-  price: number;
-  owner: string;
-  creator: string;
-  category: string;
-  status: 'buy-now' | 'auction';
-  likes: number;
-  description: string;
-  royalties: number;
-  properties: { trait: string; value: string }[];
-  priceHistory: { date: string; price: number }[];
-}
-
-export const mockNFTs: NFT[] = [
+export const mockNFTs = [
   {
     id: '1',
     name: 'Cosmic Dream #4521',
@@ -25,7 +9,8 @@ export const mockNFTs: NFT[] = [
     category: 'Art',
     status: 'buy-now',
     likes: 245,
-    description: 'A mesmerizing journey through the cosmos, this NFT represents the infinite possibilities of digital art.',
+    description:
+      'A mesmerizing journey through the cosmos, this NFT represents the infinite possibilities of digital art.',
     royalties: 10,
     properties: [
       { trait: 'Background', value: 'Cosmic Purple' },
@@ -50,7 +35,8 @@ export const mockNFTs: NFT[] = [
     category: 'Gaming',
     status: 'auction',
     likes: 512,
-    description: 'Enter the neon-lit world of cyberpunk aesthetics and futuristic gaming.',
+    description:
+      'Enter the neon-lit world of cyberpunk aesthetics and futuristic gaming.',
     royalties: 7.5,
     properties: [
       { trait: 'Type', value: 'Gaming Avatar' },
@@ -75,7 +61,8 @@ export const mockNFTs: NFT[] = [
     category: 'Gaming',
     status: 'buy-now',
     likes: 189,
-    description: 'An abstract exploration of light, color, and digital consciousness.',
+    description:
+      'An abstract exploration of light, color, and digital consciousness.',
     royalties: 5,
     properties: [
       { trait: 'Style', value: 'Gaming' },
@@ -100,7 +87,8 @@ export const mockNFTs: NFT[] = [
     category: 'Photography',
     status: 'buy-now',
     likes: 678,
-    description: 'A stunning digital landscape that blurs the line between reality and imagination.',
+    description:
+      'A stunning digital landscape that blurs the line between reality and imagination.',
     royalties: 12,
     properties: [
       { trait: 'Resolution', value: '8K' },
@@ -125,7 +113,8 @@ export const mockNFTs: NFT[] = [
     category: 'Art',
     status: 'auction',
     likes: 892,
-    description: 'Experience the quantum realm through vibrant colors and dynamic patterns.',
+    description:
+      'Experience the quantum realm through vibrant colors and dynamic patterns.',
     royalties: 15,
     properties: [
       { trait: 'Dimension', value: 'Quantum' },
@@ -150,7 +139,8 @@ export const mockNFTs: NFT[] = [
     category: 'Gaming',
     status: 'buy-now',
     likes: 423,
-    description: 'Navigate the neon streets of a futuristic metropolis in this immersive NFT.',
+    description:
+      'Navigate the neon streets of a futuristic metropolis in this immersive NFT.',
     royalties: 8,
     properties: [
       { trait: 'Setting', value: 'Urban' },
@@ -168,4 +158,3 @@ export const mockNFTs: NFT[] = [
 ];
 
 export const categories = ['All', 'Art', 'Gaming', 'Photography', 'Music'];
-
