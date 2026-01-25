@@ -23,3 +23,30 @@ export async function getMarketContract() {
     return new ethers.Contract(MARKET_CONTRACT_ADDRESS, MARKET_ABI.abi, signer);
 }
 
+export async function getAllNFTs() {
+  const nft = await getNFTContract();
+  const total = await nft.tokenCount();
+
+  const allNFTs = [];
+
+  for (let tokenId = 1; tokenId <= total; tokenId++) {
+    try {
+      const owner = await nft.ownerOf(tokenId);
+      const uri = await nft.tokenURI(tokenId);
+
+      const meta = await fetch(uri).then(r => r.json());
+
+      const nftData = {
+        id: tokenId,
+        image: meta.image,
+        name: meta.name,
+        description: meta.description,
+        categories: meta.categories
+      };
+
+      allNFTs.push(nftData);
+
+    } catch {}
+  }
+  return allNFTs;
+}

@@ -1,13 +1,7 @@
 import { motion } from 'motion/react';
 import { Heart, Eye } from 'lucide-react';
-import { NFT } from '../lib/mockData';
 
-interface NFTCardProps {
-  nft: NFT;
-  onClick: () => void;
-}
-
-export default function NFTCard({ nft, onClick }: NFTCardProps) {
+export default function NFTCard({ nft, onClick }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -26,7 +20,7 @@ export default function NFTCard({ nft, onClick }: NFTCardProps) {
           alt={nft.name}
           className="w-full h-full object-cover"
         />
-        
+
         {/* Overlay on hover */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -67,6 +61,7 @@ export default function NFTCard({ nft, onClick }: NFTCardProps) {
             </h3>
             <p className="text-sm text-gray-400">{nft.category}</p>
           </div>
+
           <motion.button
             whileHover={{ scale: 1.2 }}
             whileTap={{ scale: 0.9 }}

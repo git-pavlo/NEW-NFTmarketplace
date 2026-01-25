@@ -1,21 +1,28 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Heart, Share2, MoreHorizontal, TrendingUp, Clock } from 'lucide-react';
-import { mockNFTs } from '../lib/mockData';
 import { toast } from 'sonner@2.0.3';
+import { getNFTContract, getMarketContract, getAllNFTs } from '@/utils/contract';
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
   const [nft, setNft] = useState(null);
+  const [price, setPrice] = useState('');
   const [activeTab, setActiveTab] = useState('properties');
-  console.log(NFTstatus);
 
   useEffect(() => {
-    const foundNft = mockNFTs.find((n) => n.id === nftId);
-    setNft(foundNft || mockNFTs[0]);
+    const loadNFT = async () => {
+      const allNFTs = await getAllNFTs();
+      const found = allNFTs.find(n => n.id === nftId);
+      setNft(found || allNFTs[0]);
+    };
+
+    loadNFT();
   }, [nftId]);
 
+  console.log(nftId)
+  console.log(nft)
   if (!nft) return null;
 
   const handleBuy = () => {
@@ -159,13 +166,15 @@ export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
                 )}
               </div>
 
-              {/* Buttons */}
+              {/* Functions */}
               {NFTstatus === 'sale' && (
               <div className='flex gap-3'>
                 <div className="glassmorphism flex-1 py-4 px-4 rounded-2xl">
                   <input
                     type="text"
-                    placeholder="input eth"
+                    placeholder="Price(eth)"
+                    value={price}
+                    onChange={(e) => setPrice(e.target.value)}
                     className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all my-4 mb-4"
                   />
                   <motion.button
@@ -181,12 +190,12 @@ export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
                   <div className='w-full rounded-2xl focus-glow transition-all my-4 flex gap-3 mb-4'>
                     <input
                       type="text"
-                      placeholder="input eth"
+                      placeholder="Price(eth)"
                       className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all my-4"
                     />
                     <input
                       type="text"
-                      placeholder="input times"
+                      placeholder="Time"
                       className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all my-4"
                     />
                   </div>
@@ -302,7 +311,7 @@ export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
               </div>
 
               <div className="p-6">
-                {activeTab === 'properties' && (
+                {/* {activeTab === 'properties' && (
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -322,7 +331,7 @@ export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
                       </motion.div>
                     ))}
                   </motion.div>
-                )}
+                )} */}
 
                 {activeTab === 'details' && (
                   <motion.div
