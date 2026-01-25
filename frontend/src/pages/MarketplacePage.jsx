@@ -4,25 +4,34 @@ import { Search, SlidersHorizontal } from 'lucide-react';
 import { mockNFTs, categories } from '../lib/mockData';
 import NFTCard from '../components/NFTCard';
 
-interface MarketplacePageProps {
-  onNavigate: (page: string, nftId?: string) => void;
-}
-
-export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
+export default function MarketplacePage({ onNavigate }) {
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState<'all' | 'buy-now' | 'auction'>('all');
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 10]);
+  const [selectedStatus, setSelectedStatus] = useState('all');
+  const [priceRange, setPriceRange] = useState([0, 10]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
+  const [NFTstatus, setNFTStatus] = useState('sale');
 
   const filteredNFTs = mockNFTs.filter((nft) => {
-    const matchesCategory = selectedCategory === 'All' || nft.category === selectedCategory;
-    const matchesStatus = selectedStatus === 'all' || nft.status === selectedStatus;
-    const matchesPrice = nft.price >= priceRange[0] && nft.price <= priceRange[1];
-    const matchesSearch = nft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                          nft.category.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    return matchesCategory && matchesStatus && matchesPrice && matchesSearch;
+    const matchesCategory =
+      selectedCategory === 'All' || nft.category === selectedCategory;
+
+    const matchesStatus =
+      selectedStatus === 'all' || nft.status === selectedStatus;
+
+    const matchesPrice =
+      nft.price >= priceRange[0] && nft.price <= priceRange[1];
+
+    const matchesSearch =
+      nft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      nft.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+    return (
+      matchesCategory &&
+      matchesStatus &&
+      matchesPrice &&
+      matchesSearch
+    );
   });
 
   return (
@@ -37,7 +46,9 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
           <h1 className="text-4xl md:text-5xl mb-4">
             Explore <span className="neon-text">Marketplace</span>
           </h1>
-          <p className="text-gray-400">Discover unique digital assets from creators worldwide</p>
+          <p className="text-gray-400">
+            Discover unique digital assets from creators worldwide
+          </p>
         </motion.div>
 
         {/* Search and Filter Toggle */}
@@ -57,6 +68,7 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
               className="w-full pl-12 pr-4 py-3 rounded-2xl glassmorphism focus-glow transition-all"
             />
           </div>
+
           <motion.button
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
@@ -80,7 +92,7 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
               <div className="glassmorphism rounded-3xl p-6 sticky top-24">
                 <h3 className="text-xl mb-6">Filters</h3>
 
-                {/* Category Filter */}
+                {/* Category */}
                 <div className="mb-6">
                   <h4 className="text-sm text-gray-400 mb-3">Category</h4>
                   <div className="flex flex-wrap gap-2">
@@ -102,7 +114,7 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
                   </div>
                 </div>
 
-                {/* Status Filter */}
+                {/* Status */}
                 <div className="mb-6">
                   <h4 className="text-sm text-gray-400 mb-3">Status</h4>
                   <div className="space-y-2">
@@ -114,7 +126,7 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
                       <motion.button
                         key={option.value}
                         whileHover={{ scale: 1.02 }}
-                        onClick={() => setSelectedStatus(option.value as any)}
+                        onClick={() => setSelectedStatus(option.value)}
                         className={`w-full px-4 py-2 rounded-xl text-left transition-all ${
                           selectedStatus === option.value
                             ? 'bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white'
@@ -129,28 +141,28 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
 
                 {/* Price Range */}
                 <div className="mb-6">
-                  <h4 className="text-sm text-gray-400 mb-3">Price Range (ETH)</h4>
-                  <div className="space-y-3">
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="0.5"
-                      value={priceRange[1]}
-                      onChange={(e) => setPriceRange([priceRange[0], parseFloat(e.target.value)])}
-                      className="w-full"
-                      style={{
-                        accentColor: '#8a6aff'
-                      }}
-                    />
-                    <div className="flex justify-between text-sm">
-                      <span>{priceRange[0]} ETH</span>
-                      <span>{priceRange[1]} ETH</span>
-                    </div>
+                  <h4 className="text-sm text-gray-400 mb-3">
+                    Price Range (ETH)
+                  </h4>
+                  <input
+                    type="range"
+                    min="0"
+                    max="10"
+                    step="0.5"
+                    value={priceRange[1]}
+                    onChange={(e) =>
+                      setPriceRange([priceRange[0], Number(e.target.value)])
+                    }
+                    className="w-full"
+                    style={{ accentColor: '#8a6aff' }}
+                  />
+                  <div className="flex justify-between text-sm">
+                    <span>{priceRange[0]} ETH</span>
+                    <span>{priceRange[1]} ETH</span>
                   </div>
                 </div>
 
-                {/* Reset Filters */}
+                {/* Reset */}
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -170,14 +182,9 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
 
           {/* NFT Grid */}
           <div className="flex-1">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.3 }}
-              className="mb-4 text-gray-400"
-            >
+            <div className="mb-4 text-gray-400">
               {filteredNFTs.length} items found
-            </motion.div>
+            </div>
 
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredNFTs.map((nft, index) => (
@@ -187,21 +194,22 @@ export default function MarketplacePage({ onNavigate }: MarketplacePageProps) {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: index * 0.05 }}
                 >
-                  <NFTCard nft={nft} onClick={() => onNavigate('detail', nft.id)} />
+                  <NFTCard
+                    nft={nft}
+                    onClick={() => onNavigate('detail', nft.id, NFTstatus)}
+                  />
                 </motion.div>
               ))}
             </div>
 
             {filteredNFTs.length === 0 && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="text-center py-20"
-              >
+              <div className="text-center py-20">
                 <div className="text-6xl mb-4">🔍</div>
                 <h3 className="text-2xl mb-2">No NFTs Found</h3>
-                <p className="text-gray-400">Try adjusting your filters or search query</p>
-              </motion.div>
+                <p className="text-gray-400">
+                  Try adjusting your filters or search query
+                </p>
+              </div>
             )}
           </div>
         </div>

@@ -4,19 +4,21 @@ import { Copy, Share2, Settings, ExternalLink } from 'lucide-react';
 import { mockNFTs } from '../lib/mockData';
 import NFTCard from '../components/NFTCard';
 import { toast } from 'sonner@2.0.3';
+import { useAccount, useDisconnect } from 'wagmi';
+import { useUserNFTs } from './useUserNFTs';
 
-interface UserProfilePageProps {
-  onNavigate: (page: string, nftId?: string) => void;
-}
 
-export default function UserProfilePage({ onNavigate }: UserProfilePageProps) {
-  const [activeTab, setActiveTab] = useState<'collected' | 'created' | 'on-sale'>('collected');
+export default function UserProfilePage({ onNavigate }) {
+  const [activeTab, setActiveTab] = useState('collected');
+  const [NFTstatus, setNFTStatus] = useState('sale');
+  const { isConnected, address } = useAccount();
+  const walletAddress = address; // from wallet connect
 
-  const walletAddress = '0x742d35Cc6634C0532925a3b8...5e58';
-  
-  const collectedNFTs = mockNFTs.slice(0, 4);
-  const createdNFTs = mockNFTs.slice(4, 6);
-  const onSaleNFTs = mockNFTs.slice(0, 2);
+  const {
+    collectedNFTs,
+    createdNFTs,
+    onSaleNFTs
+  } = useUserNFTs(walletAddress);
 
   const getCurrentNFTs = () => {
     switch (activeTab) {
@@ -147,7 +149,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps) {
                 key={tab.id}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveTab(tab.id as any)}
+                onClick={() => setActiveTab(tab.id)}
                 className={`px-6 py-3 rounded-2xl transition-all ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white'
@@ -174,7 +176,7 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps) {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
             >
-              <NFTCard nft={nft} onClick={() => onNavigate('detail', nft.id)} />
+              <NFTCard nft={nft} onClick={() => onNavigate('detail', nft.id, NFTstatus)} />
             </motion.div>
           ))}
         </motion.div>
@@ -236,7 +238,8 @@ export default function UserProfilePage({ onNavigate }: UserProfilePageProps) {
   );
 }
 
-function StatBox({ label, value }: { label: string; value: string }) {
+// StatBox component
+function StatBox({ label, value }) {
   return (
     <motion.div
       whileHover={{ y: -5 }}
