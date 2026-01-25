@@ -10,7 +10,6 @@ export interface NFT {
   likes: number;
   description: string;
   royalties: number;
-  blockchain: string;
   properties: { trait: string; value: string }[];
   priceHistory: { date: string; price: number }[];
 }
@@ -28,7 +27,6 @@ export const mockNFTs: NFT[] = [
     likes: 245,
     description: 'A mesmerizing journey through the cosmos, this NFT represents the infinite possibilities of digital art.',
     royalties: 10,
-    blockchain: 'Ethereum',
     properties: [
       { trait: 'Background', value: 'Cosmic Purple' },
       { trait: 'Rarity', value: 'Legendary' },
@@ -54,7 +52,6 @@ export const mockNFTs: NFT[] = [
     likes: 512,
     description: 'Enter the neon-lit world of cyberpunk aesthetics and futuristic gaming.',
     royalties: 7.5,
-    blockchain: 'Polygon',
     properties: [
       { trait: 'Type', value: 'Gaming Avatar' },
       { trait: 'Level', value: 'Epic' },
@@ -80,7 +77,6 @@ export const mockNFTs: NFT[] = [
     likes: 189,
     description: 'An abstract exploration of light, color, and digital consciousness.',
     royalties: 5,
-    blockchain: 'Ethereum',
     properties: [
       { trait: 'Style', value: 'Abstract' },
       { trait: 'Mood', value: 'Ethereal' },
@@ -106,7 +102,6 @@ export const mockNFTs: NFT[] = [
     likes: 678,
     description: 'A stunning digital landscape that blurs the line between reality and imagination.',
     royalties: 12,
-    blockchain: 'Solana',
     properties: [
       { trait: 'Resolution', value: '8K' },
       { trait: 'Format', value: 'Landscape' },
@@ -132,7 +127,6 @@ export const mockNFTs: NFT[] = [
     likes: 892,
     description: 'Experience the quantum realm through vibrant colors and dynamic patterns.',
     royalties: 15,
-    blockchain: 'Ethereum',
     properties: [
       { trait: 'Dimension', value: 'Quantum' },
       { trait: 'Energy', value: 'Ultra High' },
@@ -158,7 +152,6 @@ export const mockNFTs: NFT[] = [
     likes: 423,
     description: 'Navigate the neon streets of a futuristic metropolis in this immersive NFT.',
     royalties: 8,
-    blockchain: 'Polygon',
     properties: [
       { trait: 'Setting', value: 'Urban' },
       { trait: 'Time', value: 'Night' },
@@ -176,4 +169,3 @@ export const mockNFTs: NFT[] = [
 
 export const categories = ['All', 'Art', 'Gaming', 'Photography', 'Abstract', 'Music'];
 
-export const blockchains = ['Ethereum', 'Polygon', 'Solana', 'Binance Smart Chain'];

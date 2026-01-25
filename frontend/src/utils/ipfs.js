@@ -1,38 +1,41 @@
-import axios from "axios";
+  // Upload file to Pinata
+  const uploadFileToIPFS = async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
 
-const PINATA_API_KEY = "d2a633329f04dab4521a";
-const PINATA_SECRET_API_KEY = "5e5296dabf66722297392166591bd27a789807af4b9986dcbc5a7c5ae45ce50d";
-
-export async function uploadImageToIPFS(file) {
-  const formData = new FormData();
-  formData.append("file", file);
-
-  const res = await axios.post(
-    "https://api.pinata.cloud/pinning/pinFileToIPFS",
-    formData,
-    {
+    const res = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+      method: 'POST',
       headers: {
-        "Content-Type": "multipart/form-data",
-        pinata_api_key: PINATA_API_KEY,
-        pinata_secret_api_key: PINATA_SECRET_API_KEY,
+        Authorization: `Bearer ${PINATA_JWT}`,
       },
+      body: formData,
+    });
+
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`File upload failed: ${errText}`);
     }
-  );
 
-  return `ipfs://${res.data.IpfsHash}`;
-}
+    const data = await res.json();
+    return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+  };
 
-export async function uploadMetadataToIPFS(metadata) {
-  const res = await axios.post(
-    "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-    metadata,
-    {
+  // Upload metadata JSON to Pinata
+  const uploadMetadataToIPFS = async (metadata) => {
+    const res = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
+      method: 'POST',
       headers: {
-        pinata_api_key: PINATA_API_KEY,
-        pinata_secret_api_key: PINATA_SECRET_API_KEY,
+        Authorization: `Bearer ${PINATA_JWT}`,
+        'Content-Type': 'application/json',
       },
-    }
-  );
+      body: JSON.stringify(metadata),
+    });
 
-  return `ipfs://${res.data.IpfsHash}`;
-}
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Metadata upload failed: ${errText}`);
+    }
+
+    const data = await res.json();
+    return `https://gateway.pinata.cloud/ipfs/${data.IpfsHash}`;
+  };
