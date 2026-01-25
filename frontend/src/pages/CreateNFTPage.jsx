@@ -1,57 +1,140 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Upload, Image as ImageIcon, Video, Sparkles } from 'lucide-react';
-import { blockchains } from '../lib/mockData';
-import { toast } from 'sonner@2.0.3';
+import { toast } from 'sonner';
+import { ethers } from 'ethers';
+import axios from 'axios';
+import NFT_ABI from '../abis/NFT.json';
 
-interface CreateNFTPageProps {
-  onNavigate: (page: string) => void;
-}
+const CONTRACT_ADDRESS = '0x68B1D87F95878fE05B998F19b66F4baba5De1aed';
 
-export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
+// ⚠️ demo only – move to backend for production
+const PINATA_API_KEY = '18233f0e183ee1001af1';
+const PINATA_SECRET_KEY = 'f1a15a17e13a181c164df487dc382ac695bdcea8e1edf97b8dfa403148102022';
+
+export default function CreateNFTPage() {
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     description: '',
-    royalties: 10,
-    blockchain: 'Ethereum',
-    category: 'Art'
+    category: '',
+    royalties: 5
   });
-  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string>('');
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setUploadedFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+  // -------------------------
+  // File Upload Handler
+  // -------------------------
+  const handleFileUpload = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    setUploadedFile(file);
+    setPreviewUrl(URL.createObjectURL(file));
   };
 
-  const handleMint = () => {
+  // -------------------------
+  // Upload File to IPFS
+  // -------------------------
+  const uploadFileToIPFS = async () => {
+    const data = new FormData();
+    data.append('file', uploadedFile);
+
+    const res = await axios.post(
+      'https://api.pinata.cloud/pinning/pinFileToIPFS',
+      data,
+      {
+        maxBodyLength: 'Infinity',
+        headers: {
+          'Content-Type': 'multipart/form-data',
+          pinata_api_key: PINATA_API_KEY,
+          pinata_secret_api_key: PINATA_SECRET_KEY
+        }
+      }
+    );
+
+    return `https://gateway.pinata.cloud/ipfs/${res.data.IpfsHash}`;
+  };
+
+  // -------------------------
+  // Upload Metadata to IPFS
+  // -------------------------
+  const uploadMetadataToIPFS = async (fileUrl) => {
+    const metadata = {
+      name: formData.name,
+      description: formData.description,
+      image: fileUrl,
+      attributes: [
+        { trait_type: 'Category', value: formData.category }
+      ]
+    };
+
+    const res = await axios.post(
+      'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+      metadata,
+      {
+        headers: {
+          pinata_api_key: PINATA_API_KEY,
+          pinata_secret_api_key: PINATA_SECRET_KEY
+        }
+      }
+    );
+
+    return `https://gateway.pinata.cloud/ipfs/${res.data.IpfsHash}`;
+  };
+
+  // -------------------------
+  // Mint NFT
+  // -------------------------
+  const handleMint = async () => {
     if (!uploadedFile || !formData.name) {
-      toast.error('Please fill in all required fields', {
-        description: 'Name and file upload are required',
-        duration: 3000
-      });
+      toast.error('Missing required fields');
       return;
     }
 
-    toast.success('NFT Minting Initiated!', {
-      description: 'Your NFT is being created. This may take a few minutes.',
-      duration: 3000
-    });
+    try {
+      setLoading(true);
+      toast.loading('Uploading to IPFS...');
 
-    setTimeout(() => {
-      toast.success('NFT Minted Successfully!', {
-        description: 'Your NFT is now live on the marketplace',
-        duration: 3000
-      });
-      onNavigate('profile');
-    }, 2000);
+      // 1️⃣ Upload image/video
+      const fileUrl = await uploadFileToIPFS();
+
+      // 2️⃣ Upload metadata
+      const tokenURI = await uploadMetadataToIPFS(fileUrl);
+
+      toast.loading('Minting NFT...');
+
+      // 3️⃣ Mint NFT
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const wallet = await signer.getAddress();
+
+      const contract = new ethers.Contract(
+        CONTRACT_ADDRESS,
+        NFT_ABI.abi,
+        signer
+      );
+
+      const royaltyBps = Math.floor(formData.royalties * 100);
+
+      const tx = await contract.mint(
+        tokenURI,
+        wallet,
+        royaltyBps
+      );
+
+      await tx.wait();
+
+      toast.success('NFT Minted Successfully 🚀');
+
+    } catch (err) {
+      console.error(err);
+      toast.error('Mint failed');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,11 +149,13 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
           <h1 className="text-4xl md:text-5xl mb-4">
             Create <span className="neon-text">Your NFT</span>
           </h1>
-          <p className="text-gray-400">Upload your artwork and mint it as an NFT</p>
+          <p className="text-gray-400">
+            Upload your artwork and mint it as an NFT
+          </p>
         </motion.div>
 
         <div className="grid lg:grid-cols-2 gap-8">
-          {/* Left: Upload Section */}
+          {/* Upload Section */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -78,19 +163,15 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
           >
             <div className="glassmorphism rounded-3xl p-6">
               <h3 className="text-xl mb-4">Upload File</h3>
-              
-              {/* Upload Area */}
-              <motion.label
-                whileHover={{ scale: 1.02 }}
-                className="block relative"
-              >
+
+              <motion.label whileHover={{ scale: 1.02 }} className="block relative">
                 <input
                   type="file"
                   accept="image/*,video/*"
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                
+
                 {!previewUrl ? (
                   <div className="border-2 border-dashed border-[rgba(138,106,255,0.3)] rounded-2xl p-12 text-center cursor-pointer hover:border-[rgba(138,106,255,0.6)] transition-all">
                     <motion.div
@@ -100,7 +181,9 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
                       <Upload className="w-10 h-10" />
                     </motion.div>
                     <p className="text-lg mb-2">Drop your file here, or browse</p>
-                    <p className="text-sm text-gray-400">PNG, JPG, GIF, MP4, Max 100MB</p>
+                    <p className="text-sm text-gray-400">
+                      PNG, JPG, GIF, MP4, Max 100MB
+                    </p>
                   </div>
                 ) : (
                   <div className="relative rounded-2xl overflow-hidden group">
@@ -123,7 +206,6 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
                 )}
               </motion.label>
 
-              {/* File Info */}
               {uploadedFile && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -148,7 +230,7 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
             </div>
           </motion.div>
 
-          {/* Right: Form Section */}
+          {/* Form Section */}
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -164,7 +246,9 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
                 type="text"
                 placeholder="e.g. Cosmic Dream #001"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all"
               />
             </div>
@@ -175,7 +259,9 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
               <textarea
                 placeholder="Tell us about your NFT..."
                 value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                onChange={(e) =>
+                  setFormData({ ...formData, description: e.target.value })
+                }
                 rows={4}
                 className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all resize-none"
               />
@@ -207,7 +293,9 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
             <div className="glassmorphism rounded-3xl p-6">
               <label className="block mb-2">
                 Royalties (%)
-                <span className="text-sm text-gray-400 ml-2">You'll earn this % on resales</span>
+                <span className="text-sm text-gray-400 ml-2">
+                  You'll earn this % on resales
+                </span>
               </label>
               <div className="flex items-center gap-4">
                 <input
@@ -216,35 +304,18 @@ export default function CreateNFTPage({ onNavigate }: CreateNFTPageProps) {
                   max="30"
                   step="0.5"
                   value={formData.royalties}
-                  onChange={(e) => setFormData({ ...formData, royalties: parseFloat(e.target.value) })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      royalties: parseFloat(e.target.value)
+                    })
+                  }
                   className="flex-1"
                   style={{ accentColor: '#8a6aff' }}
                 />
                 <div className="w-16 text-center glassmorphism rounded-xl py-2 neon-text">
                   {formData.royalties}%
                 </div>
-              </div>
-            </div>
-
-            {/* Blockchain */}
-            <div className="glassmorphism rounded-3xl p-6">
-              <label className="block mb-2">Blockchain</label>
-              <div className="grid grid-cols-2 gap-3">
-                {blockchains.map((blockchain) => (
-                  <motion.button
-                    key={blockchain}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => setFormData({ ...formData, blockchain })}
-                    className={`py-3 rounded-2xl transition-all ${
-                      formData.blockchain === blockchain
-                        ? 'bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white'
-                        : 'glassmorphism hover:border-[rgba(138,106,255,0.5)]'
-                    }`}
-                  >
-                    {blockchain}
-                  </motion.button>
-                ))}
               </div>
             </div>
 
