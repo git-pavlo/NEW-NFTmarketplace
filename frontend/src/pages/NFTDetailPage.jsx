@@ -4,7 +4,7 @@ import { Heart, Share2, MoreHorizontal, TrendingUp, Clock } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { getNFTContract, getMarketContract, MARKET_CONTRACT_ADDRESS, NFT_CONTRACT_ADDRESS } from '@/utils/contract';
 import { ethers } from 'ethers'
-
+   
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function NFTDetailPage({ nftId, onNavigate }) {
