@@ -1,14 +1,12 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Upload, Image as ImageIcon, Video, Sparkles } from 'lucide-react';
+import { Upload, Image as ImageIcon, Video, Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
 import axios from 'axios';
-import NFT_ABI from '../abis/NFT.json';
+import { getNFTContract, NFT_CONTRACT_ADDRESS } from '../utils/contract';
 
-const CONTRACT_ADDRESS = '0x5FbDB2315678afecb367f032d93F642f64180aa3';
-
-// ⚠️ demo only – move to backend for production
+// ⚠️ Move these to .env for production
 const PINATA_API_KEY = '18233f0e183ee1001af1';
 const PINATA_SECRET_KEY = 'f1a15a17e13a181c164df487dc382ac695bdcea8e1edf97b8dfa403148102022';
 
@@ -22,191 +20,113 @@ export default function CreateNFTPage() {
     name: '',
     description: '',
     category: 'Art',
-    royalties: 5
+    royalties: 5 // Default 5%
   });
 
-  // -------------------------
-  // File Upload Handler
-  // -------------------------
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-
     setUploadedFile(file);
     setPreviewUrl(URL.createObjectURL(file));
   };
 
-  // -------------------------
-  // Upload File to IPFS
-  // -------------------------
-  const uploadFileToIPFS = async () => {
-    const data = new FormData();
-    data.append('file', uploadedFile);
+  const uploadToIPFS = async () => {
+    // 1. Upload Image/Video
+    const fileData = new FormData();
+    fileData.append('file', uploadedFile);
+    
+    const fileRes = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', fileData, {
+      headers: { 
+        pinata_api_key: PINATA_API_KEY, 
+        pinata_secret_api_key: PINATA_SECRET_KEY 
+      }
+    });
+    const fileUrl = `https://gateway.pinata.cloud/ipfs/${fileRes.data.IpfsHash}`;
 
-    const res = await axios.post(
-      'https://api.pinata.cloud/pinning/pinFileToIPFS',
-      data,
-      {
-        maxBodyLength: 'Infinity',
-        headers: {
-          'Content-Type': 'multipart/form-data',
-          pinata_api_key: PINATA_API_KEY,
-          pinata_secret_api_key: PINATA_SECRET_KEY
-        }
-      } 
-    );
-
-    return `https://gateway.pinata.cloud/ipfs/${res.data.IpfsHash}`;
-  };
-
-  // -------------------------
-  // Upload Metadata to IPFS
-  // -------------------------
-  const uploadMetadataToIPFS = async (fileUrl) => {
+    // 2. Upload Metadata JSON
     const metadata = {
       name: formData.name,
       description: formData.description,
       image: fileUrl,
-      categories: formData.category,
+      categories: [formData.category], // Store as array for consistency
+      attributes: [{ trait_type: "Royalty", value: `${formData.royalties}%` }]
     };
 
-    const res = await axios.post(
-      'https://api.pinata.cloud/pinning/pinJSONToIPFS',
-      metadata,
-      {
-        headers: {
-          pinata_api_key: PINATA_API_KEY,
-          pinata_secret_api_key: PINATA_SECRET_KEY
-        }
+    const metaRes = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', metadata, {
+      headers: { 
+        pinata_api_key: PINATA_API_KEY, 
+        pinata_secret_api_key: PINATA_SECRET_KEY 
       }
-    );
+    });
 
-    return `https://gateway.pinata.cloud/ipfs/${res.data.IpfsHash}`;
+    return {
+      tokenURI: `https://gateway.pinata.cloud/ipfs/${metaRes.data.IpfsHash}`,
+      fileUrl
+    };
   };
 
-  // -------------------------
-  // Mint NFT & auto-add to MetaMask
-  // -------------------------
   const handleMint = async () => {
-    if (!uploadedFile || !formData.name) return toast.error('Missing fields');
-    if (!window.ethereum) return toast.error('MetaMask not detected');
-
+    if (!uploadedFile || !formData.name) return toast.error('Please fill in all required fields');
+    
     try {
       setLoading(true);
+      const contract = await getNFTContract();
+      const signer = contract.runner;
+      const walletAddress = await signer.getAddress();
 
-      // Setup provider & signer
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const wallet = await signer.getAddress();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, NFT_ABI.abi, signer);
+      // IPFS Upload phase
+      toast.info("Uploading assets to IPFS...");
+      const { tokenURI, fileUrl } = await uploadToIPFS();
 
-      // Upload file & metadata
-      const fileUrl = await uploadFileToIPFS();
-      const tokenURI = await uploadMetadataToIPFS(fileUrl);
-
-      // Convert royalties to basis points
+      // Minting phase
+      toast.info("Awaiting wallet confirmation...");
       const royaltyBps = Math.floor(formData.royalties * 100);
-
-      // Mint NFT
-      const tx = await contract.mint(tokenURI, wallet, royaltyBps);
+      
+      const tx = await contract.mint(tokenURI, walletAddress, royaltyBps);
       const receipt = await tx.wait();
-      console.log(tokenURI)
 
-      // Parse Transfer event safely
-      // const transferEvent = receipt.logs
-      //   .map(log => {
-      //     try {
-      //       return contract.interface.parseLog(log);
-      //     } catch {
-      //       return null;
-      //     }
-      //   })
-      //   .find(event => event && event.name === 'Transfer');
+      // Parse logs to find TokenId (from Transfer event)
+      const transferLog = receipt.logs.find(log => {
+        try {
+          const parsed = contract.interface.parseLog(log);
+          return parsed.name === 'Transfer';
+        } catch { return false; }
+      });
 
-      // if (!transferEvent) {
-      //   console.warn('Transfer event not found. NFT minted but MetaMask watchAsset skipped.');
-      //   toast.success('NFT minted! Add it manually in MetaMask.');
-      // } else {
-      //   const tokenId = transferEvent.args.tokenId.toString();
-      //   const contractAddress = contract.address;
+      const tokenId = contract.interface.parseLog(transferLog).args.tokenId.toString();
 
-      //   if (contractAddress && tokenId) {
-      //     try {
-      //       await window.ethereum.request({
-      //         method: 'wallet_watchAsset',
-      //         params: {
-      //           type: 'ERC721',
-      //           options: {
-      //             address: contractAddress,
-      //             tokenId: tokenId,
-      //             symbol: 'NNFT',
-      //             image: fileUrl,
-      //           },
-      //         },
-      //       });
-      //       toast.success(`NFT #${tokenId} minted and added to MetaMask! 🎉`);
-      //     } catch (watchErr) {
-      //       console.warn('MetaMask watchAsset failed:', watchErr);
-      //       toast.info(`NFT #${tokenId} minted! Add it manually in MetaMask.`);
-      //     }
-      //   }
-      // }
+      toast.success(`Succesfully minted NFT #${tokenId}!`);
 
-      // Refresh gallery
-      fetchGallery(contract);
+      // UX: Prompt MetaMask to track the new NFT
+      if (window.ethereum) {
+        try {
+          await window.ethereum.request({
+            method: 'wallet_watchAsset',
+            params: {
+              type: 'ERC721',
+              options: {
+                address: NFT_CONTRACT_ADDRESS,
+                tokenId: tokenId,
+                symbol: 'NNFT',
+                image: fileUrl,
+              },
+            },
+          });
+        } catch (e) { console.log("User declined asset tracking prompt"); }
+      }
+
+      // Reset Form
+      setUploadedFile(null);
+      setPreviewUrl(null);
+      setFormData({ name: '', description: '', category: 'Art', royalties: 5 });
+      
     } catch (err) {
       console.error(err);
-      toast.error('Mint failed');
+      toast.error(err.reason || 'Minting failed. Check console for details.');
     } finally {
       setLoading(false);
     }
   };
-
-  // -------------------------
-  // Fetch all minted NFTs for gallery
-  // -------------------------
-  const fetchGallery = async (contractInstance) => {
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = contractInstance || new ethers.Contract(CONTRACT_ADDRESS, NFT_ABI.abi, provider);
-
-      const totalBigInt = await contract.tokenCount();
-      const total = Number(totalBigInt);
-      const items = [];
-
-      for (let i = 1; i <= total; i++) {
-        try {
-          const tokenURI = await contract.tokenURI(i);
-          let metadata = {};
-
-          if (tokenURI.startsWith('data:application/json;base64,')) {
-            const json = atob(tokenURI.replace('data:application/json;base64,', ''));
-            metadata = JSON.parse(json);
-          } else {
-            const res = await fetch(tokenURI);
-            metadata = await res.json();
-          }
-
-          const royaltyInfo = await contract.royaltyInfo(i, 1000);
-          items.push({
-            tokenId: i,
-            ...metadata,
-            royalty: Number(royaltyInfo[1]) / 10000
-          });
-        } catch (err) {
-          console.error('Error fetching token', i, err);
-        }
-      }
-
-      setGallery(items);
-    } catch (err) {
-      console.error(err);
-    }
-  };
-
-  useEffect(() => {
-    if (window.ethereum) fetchGallery();
-  }, []);
 
   return (
     <div className="min-h-screen pt-24 px-4 pb-20">

@@ -20,8 +20,8 @@ export default function WalletConnect() {
             <button
               onClick={() => disconnect()}
               className="px-4 py-2 rounded-lg bg-red-600/20 border border-red-500/50 hover:bg-red-600/30 transition-all"
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              // whileHover={{ scale: 1.05 }}
+              // whileTap={{ scale: 0.95 }}
             >
               Disconnect
             </button>

@@ -20,6 +20,9 @@ export default function UserProfilePage({ onNavigate }) {
     onSaleNFTs
   } = useUserNFTs(walletAddress);
 
+  console.log(collectedNFTs);
+  console.log(createdNFTs);
+  console.log(onSaleNFTs);
   const getCurrentNFTs = () => {
     switch (activeTab) {
       case 'collected':
@@ -176,7 +179,7 @@ export default function UserProfilePage({ onNavigate }) {
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
             >
-              <NFTCard nft={nft} onClick={() => onNavigate('detail', nft.id, NFTstatus)} />
+              <NFTCard nft={nft} onClick={() => onNavigate('detail', nft.id )} />
             </motion.div>
           ))}
         </motion.div>

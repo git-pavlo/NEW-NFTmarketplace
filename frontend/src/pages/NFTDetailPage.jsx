@@ -2,43 +2,151 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Heart, Share2, MoreHorizontal, TrendingUp, Clock } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
-import { getNFTContract, getMarketContract, getAllNFTs } from '@/utils/contract';
+import { getNFTContract, getMarketContract, MARKET_CONTRACT_ADDRESS, NFT_CONTRACT_ADDRESS } from '@/utils/contract';
+import { ethers } from 'ethers'
 
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
+export default function NFTDetailPage({ nftId, onNavigate }) {
+  const [NFTstatus, setNFTStatus] = useState('');
   const [nft, setNft] = useState(null);
   const [price, setPrice] = useState('');
+  const [marketItem, setMarketItem] = useState(null);
   const [activeTab, setActiveTab] = useState('properties');
+  const [loading, setLoading] = useState(true); // 1. Add loading state
 
   useEffect(() => {
-    const loadNFT = async () => {
-      const allNFTs = await getAllNFTs();
-      const found = allNFTs.find(n => n.id === nftId);
-      setNft(found || allNFTs[0]);
+    const loadNFTData = async () => {
+      try {
+        setLoading(true);
+        const nftContract = await getNFTContract();
+        const marketplace = await getMarketContract();
+        
+        // Get current user address
+        const signer = await (new ethers.BrowserProvider(window.ethereum)).getSigner();
+        const userAddress = await signer.getAddress();
+
+        // 1. Fetch metadata and owner
+        const uri = await nftContract.tokenURI(nftId);
+        const owner = await nftContract.ownerOf(nftId);
+        const meta = await fetch(uri).then(res => res.json());
+
+        // 2. Scan marketplace for active listing
+        const itemCount = Number(await marketplace.itemCount());
+        let foundMarketItem = null;
+        
+        for (let i = 1; i <= itemCount; i++) {
+          const item = await marketplace.items(i);
+          if (Number(item.tokenId) === Number(nftId) && !item.sold && !item.cancelled) {
+            foundMarketItem = {
+              itemId: Number(item.itemId),
+              price: ethers.formatEther(item.price),
+              seller: item.seller
+            };
+            break;
+          }
+        }
+
+        // 3. Determine and Set NFT Status logic
+        if (foundMarketItem) {
+          if (foundMarketItem.seller.toLowerCase() === userAddress.toLowerCase()) {
+            setNFTStatus('on-sale');
+          } else {
+            setNFTStatus('buynow');
+          }
+        } else if (owner.toLowerCase() === userAddress.toLowerCase()) {
+          setNFTStatus('collected');
+        } else {
+          setNFTStatus('view-only'); // Fallback for NFTs that aren't yours or for sale
+        }
+
+        setNft({
+          id: nftId,
+          owner: owner,
+          ...meta,
+          price: foundMarketItem ? foundMarketItem.price : 'Not for sale'
+        });
+        setMarketItem(foundMarketItem);
+      } catch (err) {
+        console.error("Error loading NFT detail:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
-    loadNFT();
+    loadNFTData();
   }, [nftId]);
 
-  console.log(nftId)
-  console.log(nft)
-  if (!nft) return null;
+  const handleSale = async () => {
+    const nftContract = await getNFTContract();
+    const marketplaceContract = await getMarketContract();
+    try {
+      if (!price) throw new Error("Enter price");
 
-  const handleBuy = () => {
-    console.log("hi")
-    toast.success('Purchase Initiated!', {
-      description: 'Please confirm the transaction in your wallet',
-      duration: 3000
-    });
+      toast.loading("Approve & list NFT...");
+
+      console.log(nftContract)
+      console.log(nftId)
+      // approve
+      await nftContract.approve(
+        MARKET_CONTRACT_ADDRESS,
+        nftId
+      );
+
+      // list
+      const tx = await marketplaceContract.listItem(
+        NFT_CONTRACT_ADDRESS,
+        nftId,
+        ethers.parseEther(price)
+      );
+      await tx.wait();
+
+      toast.success("NFT listed successfully!");
+    } catch (err) {
+      console.error(err);
+      toast.error(err.reason || err.message);
+    }
   };
 
-  const handleSale = () => {
-    console.log("hisale")
-    toast.success('Purchase Initiated!', {
-      description: 'Please confirm the transaction in your wallet',
-      duration: 3000
-    });
+  const handleBuy = async () => {
+    if (!marketItem) return toast.error("Listing not found");
+    
+    const toastId = toast.loading("Confirming purchase in wallet...");
+    try {
+      const marketplace = await getMarketContract();
+      
+      // marketplace.buyItem takes the itemId (e.g. 1, 2, 3...)
+      const tx = await marketplace.buyItem(marketItem.itemId, {
+        value: ethers.parseEther(marketItem.price.toString())
+      });
+
+      toast.loading("Transaction processing...", { id: toastId });
+      await tx.wait();
+
+      toast.success("NFT purchased successfully!", { id: toastId });
+      onNavigate('marketplace');
+    } catch (err) {
+      toast.error(err.reason || err.message, { id: toastId });
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!marketItem) return toast.error("No active listing to cancel");
+
+    const toastId = toast.loading("Approving cancellation...");
+    try {
+      const marketplace = await getMarketContract();
+
+      const tx = await marketplace.cancelItem(marketItem.itemId);
+      
+      toast.loading("Returning NFT to your wallet...", { id: toastId });
+      await tx.wait();
+
+      toast.success("Listing cancelled and NFT returned!", { id: toastId });
+      onNavigate('profile');
+    } catch (err) {
+      toast.error(err.reason || err.message, { id: toastId });
+    }
   };
 
   const handleBid = () => {
@@ -46,7 +154,18 @@ export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
       description: 'Your bid has been submitted successfully',
       duration: 3000
     });
-  };
+  }; 
+  
+  if (!nft) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-[#8a6aff] border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-400">Loading NFT details...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen pt-24 px-4 pb-20">
@@ -167,7 +286,7 @@ export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
               </div>
 
               {/* Functions */}
-              {NFTstatus === 'sale' && (
+              {NFTstatus === 'collected' && (
               <div className='flex gap-3'>
                 <div className="glassmorphism flex-1 py-4 px-4 rounded-2xl">
                   <input
@@ -210,11 +329,12 @@ export default function NFTDetailPage({ nftId, onNavigate, NFTstatus }) {
                 </div>
               </div>
               )}
-              {NFTstatus === 'cancel' && (
+              {NFTstatus === 'on-sale' && (
                 <div className="flex gap-3">
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    onClick={handleCancel}
                     className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
                   >
                     cancel
