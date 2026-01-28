@@ -1,37 +1,51 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Search, SlidersHorizontal } from 'lucide-react';
-import { mockNFTs, categories } from '../lib/mockData';
+import { Search, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { getMarketItems, categories } from '../utils/contract';
 import NFTCard from '../components/NFTCard';
 
 export default function MarketplacePage({ onNavigate }) {
+  const [nfts, setNfts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [priceRange, setPriceRange] = useState([0, 10]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
-  const [NFTstatus, setNFTStatus] = useState('sale');
 
-  const filteredNFTs = mockNFTs.filter((nft) => {
+  useEffect(() => {
+    async function fetchNFTs() {
+      try {
+        setLoading(true);
+        const data = await getMarketItems();
+        setNfts(data);
+      } catch (error) {
+        console.error("Error fetching marketplace items:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchNFTs();
+  }, []);
+
+  const filteredNFTs = nfts.filter((nft) => {
+    const nftCategory = nft.categories?.[0] || 'Art';
     const matchesCategory =
-      selectedCategory === 'All' || nft.category === selectedCategory;
+      selectedCategory === 'All' || nftCategory === selectedCategory;
 
+    // Status logic: In a live market, items are either 'buy-now' or 'auction' 
+    // depending on your contract logic. For now, we mirror your filter.
     const matchesStatus =
-      selectedStatus === 'all' || nft.status === selectedStatus;
+      selectedStatus === 'all' || (selectedStatus === 'buy-now');
 
     const matchesPrice =
-      nft.price >= priceRange[0] && nft.price <= priceRange[1];
+      Number(nft.price) >= priceRange[0] && Number(nft.price) <= priceRange[1];
 
     const matchesSearch =
       nft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      nft.category.toLowerCase().includes(searchQuery.toLowerCase());
+      nftCategory.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return (
-      matchesCategory &&
-      matchesStatus &&
-      matchesPrice &&
-      matchesSearch
-    );
+    return matchesCategory && matchesStatus && matchesPrice && matchesSearch;
   });
 
   return (
@@ -47,7 +61,7 @@ export default function MarketplacePage({ onNavigate }) {
             Explore <span className="neon-text">Marketplace</span>
           </h1>
           <p className="text-gray-400">
-            Discover unique digital assets from creators worldwide
+            Discover real digital assets synced with the blockchain
           </p>
         </motion.div>
 
@@ -65,7 +79,7 @@ export default function MarketplacePage({ onNavigate }) {
               placeholder="Search NFTs by name or category"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 rounded-2xl glassmorphism focus-glow transition-all"
+              className="w-full pl-12 pr-4 py-3 rounded-2xl glassmorphism focus-glow transition-all outline-none"
             />
           </div>
 
@@ -86,130 +100,96 @@ export default function MarketplacePage({ onNavigate }) {
             <motion.aside
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
               className="w-full lg:w-72 flex-shrink-0"
             >
               <div className="glassmorphism rounded-3xl p-6 sticky top-24">
                 <h3 className="text-xl mb-6">Filters</h3>
 
-                {/* Category */}
                 <div className="mb-6">
                   <h4 className="text-sm text-gray-400 mb-3">Category</h4>
                   <div className="flex flex-wrap gap-2">
                     {categories.map((category) => (
-                      <motion.button
+                      <button
                         key={category}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
                         onClick={() => setSelectedCategory(category)}
-                        className={`px-4 py-2 rounded-xl transition-all ${
+                        className={`px-4 py-2 rounded-xl text-sm transition-all ${
                           selectedCategory === category
                             ? 'bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white'
                             : 'glassmorphism hover:border-[rgba(138,106,255,0.5)]'
                         }`}
                       >
                         {category}
-                      </motion.button>
+                      </button>
                     ))}
                   </div>
                 </div>
 
-                {/* Status */}
                 <div className="mb-6">
-                  <h4 className="text-sm text-gray-400 mb-3">Status</h4>
-                  <div className="space-y-2">
-                    {[
-                      { value: 'all', label: 'All Items' },
-                      { value: 'buy-now', label: 'Buy Now' },
-                      { value: 'auction', label: 'On Auction' }
-                    ].map((option) => (
-                      <motion.button
-                        key={option.value}
-                        whileHover={{ scale: 1.02 }}
-                        onClick={() => setSelectedStatus(option.value)}
-                        className={`w-full px-4 py-2 rounded-xl text-left transition-all ${
-                          selectedStatus === option.value
-                            ? 'bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white'
-                            : 'glassmorphism hover:border-[rgba(138,106,255,0.5)]'
-                        }`}
-                      >
-                        {option.label}
-                      </motion.button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Price Range */}
-                <div className="mb-6">
-                  <h4 className="text-sm text-gray-400 mb-3">
-                    Price Range (ETH)
-                  </h4>
+                  <h4 className="text-sm text-gray-400 mb-3">Price Range (ETH)</h4>
                   <input
                     type="range"
                     min="0"
                     max="10"
-                    step="0.5"
+                    step="0.1"
                     value={priceRange[1]}
-                    onChange={(e) =>
-                      setPriceRange([priceRange[0], Number(e.target.value)])
-                    }
-                    className="w-full"
-                    style={{ accentColor: '#8a6aff' }}
+                    onChange={(e) => setPriceRange([priceRange[0], Number(e.target.value)])}
+                    className="w-full accent-[#8a6aff]"
                   />
-                  <div className="flex justify-between text-sm">
+                  <div className="flex justify-between text-xs mt-2 text-gray-300">
                     <span>{priceRange[0]} ETH</span>
                     <span>{priceRange[1]} ETH</span>
                   </div>
                 </div>
 
-                {/* Reset */}
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
+                <button
                   onClick={() => {
                     setSelectedCategory('All');
-                    setSelectedStatus('all');
                     setPriceRange([0, 10]);
                     setSearchQuery('');
                   }}
-                  className="w-full py-2 rounded-xl glassmorphism hover:border-[rgba(138,106,255,0.5)] transition-all"
+                  className="w-full py-2 rounded-xl glassmorphism hover:bg-white/5 transition-all text-sm"
                 >
                   Reset Filters
-                </motion.button>
+                </button>
               </div>
             </motion.aside>
           )}
 
           {/* NFT Grid */}
           <div className="flex-1">
-            <div className="mb-4 text-gray-400">
-              {filteredNFTs.length} items found
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredNFTs.map((nft, index) => (
-                <motion.div
-                  key={nft.id}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                >
-                  <NFTCard
-                    nft={nft}
-                    onClick={() => onNavigate('detail', nft.id, NFTstatus)}
-                  />
-                </motion.div>
-              ))}
-            </div>
-
-            {filteredNFTs.length === 0 && (
-              <div className="text-center py-20">
-                <div className="text-6xl mb-4">🔍</div>
-                <h3 className="text-2xl mb-2">No NFTs Found</h3>
-                <p className="text-gray-400">
-                  Try adjusting your filters or search query
-                </p>
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <Loader2 className="w-10 h-10 text-[#8a6aff] animate-spin mb-4" />
+                <p className="text-gray-400">Fetching assets from the blockchain...</p>
               </div>
+            ) : (
+              <>
+                <div className="mb-4 text-gray-400">
+                  {filteredNFTs.length} items found
+                </div>
+
+                <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {filteredNFTs.map((nft, index) => (
+                    <NFTCard
+                      key={nft.itemId || nft.id}
+                      nft={{
+                        ...nft,
+                        category: nft.categories?.[0] || 'Art', // Map metadata array to card string
+                        owner: `${nft.seller.slice(0, 6)}...${nft.seller.slice(-4)}`
+                      }}
+                      onClick={() => onNavigate('detail', nft.tokenId)}
+                    />
+                  ))}
+                </div>
+
+                {filteredNFTs.length === 0 && (
+                  <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10">
+                    <div className="text-6xl mb-4">💎</div>
+                    <h3 className="text-2xl mb-2">No NFTs listed</h3>
+                    <p className="text-gray-400">Be the first to create and list an NFT!</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>

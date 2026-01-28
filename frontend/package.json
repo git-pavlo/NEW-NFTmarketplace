@@ -1,6 +1,7 @@
 {
       "name": "Premium NFT Marketplace Design",
       "version": "0.1.0",
+      "type": "module",
       "private": true,
       "dependencies": {
             "@radix-ui/react-accordion": "^1.2.3",
