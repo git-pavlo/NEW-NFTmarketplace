@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Search, Wallet } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { motion } from 'motion/react';
 import WalletModal from './WalletModal';
 
@@ -46,6 +46,12 @@ export default function Navbar({ currentPage, onNavigate }) {
 
             {/* Navigation Links */}
             <div className="hidden lg:flex items-center space-x-6">
+              <NavLink
+                active={currentPage === 'allnfts'}
+                onClick={() => onNavigate('allnfts')}
+              >
+                All NFTs
+              </NavLink>
               <NavLink
                 active={currentPage === 'marketplace'}
                 onClick={() => onNavigate('marketplace')}

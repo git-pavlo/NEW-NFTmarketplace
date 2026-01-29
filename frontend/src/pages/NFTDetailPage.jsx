@@ -8,6 +8,7 @@ import { ethers } from 'ethers'
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function NFTDetailPage({ nftId, onNavigate }) {
+  const [userAddress, setUserAddress] = useState(null); 
   const [NFTstatus, setNFTStatus] = useState('');
   const [nft, setNft] = useState(null);
   const [price, setPrice] = useState('');
@@ -32,7 +33,8 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         
         // Get current user address
         const signer = await (new ethers.BrowserProvider(window.ethereum)).getSigner();
-        const userAddress = await signer.getAddress();
+        const address = await signer.getAddress();
+        setUserAddress(address);
 
         // 1. Fetch metadata and owner
         const uri = await nftContract.tokenURI(nftId);
@@ -68,8 +70,8 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
           setNFTStatus('auction');
           setAuctionData(activeAuction);
         } else if (foundMarketItem) {
-          setNFTStatus(foundMarketItem.seller.toLowerCase() === userAddress.toLowerCase() ? 'on-sale' : 'buynow');
-        } else if (owner.toLowerCase() === userAddress.toLowerCase()) {
+          setNFTStatus(foundMarketItem.seller.toLowerCase() === address.toLowerCase() ? 'on-sale' : 'buynow');
+        } else if (owner.toLowerCase() === address.toLowerCase()) {
           setNFTStatus('collected');
         } else {
           setNFTStatus('view-only');
@@ -195,6 +197,9 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
   const handleBid = async () => {
     try {
       if (!bidAmount || !marketItem) return;
+      if (marketItem.seller.toLowerCase() === userAddress.toLowerCase()) {
+        return toast.error("You cannot bid on your own auction.");
+      }
       const marketplace = await getMarketContract();
       const tx = await marketplace.placeBid(marketItem.itemId, { value: ethers.parseEther(bidAmount) });
       toast.loading("Placing bid...");
@@ -423,10 +428,29 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                       <p className="text-lg text-[#8a6aff]">{new Date(auctionData.endAt).toLocaleTimeString()}</p>
                     </div>
                   </div>
-                  <div className="flex gap-3">
-                    <input type="text" placeholder="Your bid (ETH)" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} className="flex-1 bg-white/5 p-4 rounded-2xl" />
-                    <button onClick={handleBid} className="px-8 bg-purple-600 rounded-2xl hover:bg-purple-500 transition-colors">Place Bid</button>
-                  </div>
+                  {marketItem.seller.toLowerCase() === userAddress?.toLowerCase() ? (
+                    <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl">
+                      <p className="text-orange-400 text-sm text-center">
+                        You are the seller of this auction. You cannot place bids.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex gap-3">
+                      <input 
+                        type="text" 
+                        placeholder="Your bid (ETH)" 
+                        value={bidAmount} 
+                        onChange={(e) => setBidAmount(e.target.value)} 
+                        className="flex-1 bg-white/5 p-4 rounded-2xl" 
+                      />
+                      <button 
+                        onClick={handleBid} 
+                        className="px-8 bg-purple-600 rounded-2xl hover:bg-purple-500 transition-colors"
+                      >
+                        Place Bid
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
