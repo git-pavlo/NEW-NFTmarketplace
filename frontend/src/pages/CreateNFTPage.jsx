@@ -35,7 +35,10 @@ export default function CreateNFTPage() {
   const uploadToIPFS = async () => {
     try {
       // 1. Prepare File Data
+      console.log(PINATA_API_KEY)
+      console.log(PINATA_SECRET_KEY)
       const fileData = new FormData();
+      console.log(uploadedFile)
       fileData.append('file', uploadedFile);
 
       // // Optional: Add Pinata Metadata to help the server process it faster
@@ -48,6 +51,7 @@ export default function CreateNFTPage() {
       //   cidVersion: 0,
       // });
       // fileData.append('pinataOptions', options);
+      // console.log(fileData);
 
       // 2. Upload Image using Axios (Better for large files/timeouts)
       const fileRes = await axios.post(
@@ -55,11 +59,11 @@ export default function CreateNFTPage() {
         fileData,
         {
           headers: {
-            // Note: DO NOT set Content-Type header manually for FormData in Axios
-            Authorization: `Bearer ${PINATA_JWT}`,
+            'pinata_api_key': PINATA_API_KEY,
+            'pinata_secret_api_key': PINATA_SECRET_KEY,
           },
-          // Wait longer for the response (up to 5 mins for large files)
-          timeout: 300000, 
+          // Maximize timeout to 10 minutes
+          timeout: 600000, 
         }
       );
 
@@ -80,7 +84,8 @@ export default function CreateNFTPage() {
         {
           headers: {
             'Content-Type': 'application/json',
-            Authorization: `Bearer ${PINATA_JWT}`,
+            'pinata_api_key': PINATA_API_KEY,
+            'pinata_secret_api_key': PINATA_SECRET_KEY,
           },
         }
       );
