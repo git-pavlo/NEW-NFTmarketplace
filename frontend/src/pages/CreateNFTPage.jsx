@@ -30,49 +30,81 @@ export default function CreateNFTPage() {
     setPreviewUrl(URL.createObjectURL(file));
   };
 
+  const PINATA_JWT = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiI4YzU2NzE2Ny0wNDhhLTQzYjMtODVmZi1iMzA3YjI2MDBhZjgiLCJlbWFpbCI6ImNyaXN0b3BlcmhhcnJ5QGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaW5fcG9saWN5Ijp7InJlZ2lvbnMiOlt7ImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxLCJpZCI6IkZSQTEifSx7ImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxLCJpZCI6Ik5ZQzEifV0sInZlcnNpb24iOjF9LCJtZmFfZW5hYmxlZCI6ZmFsc2UsInN0YXR1cyI6IkFDVElWRSJ9LCJhdXRoZW50aWNhdGlvblR5cGUiOiJzY29wZWRLZXkiLCJzY29wZWRLZXlLZXkiOiIxODIzM2YwZTE4M2VlMTAwMWFmMSIsInNjb3BlZEtleVNlY3JldCI6ImYxYTE1YTE3ZTEzYTE4MWMxNjRkZjQ4N2RjMzgyYWM2OTViZGNlYThlMWVkZjk3YjhkZmE0MDMxNDgxMDIwMjIiLCJleHAiOjE4MDA4MTQ4MzR9.-LH5t446clO7-hXp5IdLpEfNd3dVU95civ6cTW1_24Q";
+
   const uploadToIPFS = async () => {
-    // 1. Upload Image/Video
-    const fileData = new FormData();
-    fileData.append('file', uploadedFile);
-    
-    const fileRes = await axios.post('https://api.pinata.cloud/pinning/pinFileToIPFS', fileData, {
-      headers: { 
-        pinata_api_key: PINATA_API_KEY, 
-        pinata_secret_api_key: PINATA_SECRET_KEY 
-      }
-    });
-    const fileUrl = `https://gateway.pinata.cloud/ipfs/${fileRes.data.IpfsHash}`;
+    try {
+      // 1. Prepare File Data
+      const fileData = new FormData();
+      fileData.append('file', uploadedFile);
 
-    // 2. Upload Metadata JSON
-    const metadata = {
-      name: formData.name,
-      description: formData.description,
-      image: fileUrl,
-      categories: [formData.category], // Store as array for consistency
-      attributes: [{ trait_type: "Royalty", value: `${formData.royalties}%` }]
-    };
+      // // Optional: Add Pinata Metadata to help the server process it faster
+      // const metadata = JSON.stringify({
+      //   name: formData.name,
+      // });
+      // fileData.append('pinataMetadata', metadata);
 
-    const metaRes = await axios.post('https://api.pinata.cloud/pinning/pinJSONToIPFS', metadata, {
-      headers: { 
-        pinata_api_key: PINATA_API_KEY, 
-        pinata_secret_api_key: PINATA_SECRET_KEY 
-      }
-    });
+      // const options = JSON.stringify({
+      //   cidVersion: 0,
+      // });
+      // fileData.append('pinataOptions', options);
 
-    return {
-      tokenURI: `https://gateway.pinata.cloud/ipfs/${metaRes.data.IpfsHash}`,
-      fileUrl
-    };
+      // 2. Upload Image using Axios (Better for large files/timeouts)
+      const fileRes = await axios.post(
+        'https://api.pinata.cloud/pinning/pinFileToIPFS',
+        fileData,
+        {
+          headers: {
+            // Note: DO NOT set Content-Type header manually for FormData in Axios
+            Authorization: `Bearer ${PINATA_JWT}`,
+          },
+          // Wait longer for the response (up to 5 mins for large files)
+          timeout: 300000, 
+        }
+      );
+
+      const fileUrl = `https://gateway.pinata.cloud/ipfs/${fileRes.data.IpfsHash}`;
+
+      // 3. Upload Metadata JSON
+      const metadataBody = {
+        name: formData.name,
+        description: formData.description,
+        image: fileUrl,
+        categories: [formData.category],
+        attributes: [{ trait_type: "Royalty", value: `${formData.royalties}%` }]
+      };
+
+      const metaRes = await axios.post(
+        'https://api.pinata.cloud/pinning/pinJSONToIPFS',
+        metadataBody,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${PINATA_JWT}`,
+          },
+        }
+      );
+
+      return {
+        tokenURI: `https://gateway.pinata.cloud/ipfs/${metaRes.data.IpfsHash}`,
+        fileUrl
+      };
+    } catch (error) {
+      console.error("IPFS Upload Error Detail:", error.response?.data || error.message);
+      throw new Error(error.response?.data?.error?.details || "IPFS Upload Failed. If file is large, please wait or check your network.");
+    }
   };
 
   const handleMint = async () => {
-    if (!uploadedFile || !formData.name) return toast.error('Please fill in all required fields');
+    if (!uploadedFile || !formData.name || !formData.description) return toast.error('Please fill in all required fields');
     
     try {
       setLoading(true);
       const contract = await getNFTContract();
       const signer = contract.runner;
       const walletAddress = await signer.getAddress();
+
+      console.log("walletAddress>>>", walletAddress);
 
       // IPFS Upload phase
       toast.info("Uploading assets to IPFS...");

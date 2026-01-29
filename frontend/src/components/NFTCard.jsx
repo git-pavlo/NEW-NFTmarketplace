@@ -57,9 +57,9 @@ export default function NFTCard({ nft, onClick }) {
         <div className="flex items-start justify-between mb-2">
           <div className="flex-1">
             <h3 className="truncate group-hover:text-[#8a6aff] transition-colors">
-              {nft.name}
+              {nft.name} #{nft.tokenId}
             </h3>
-            <p className="text-sm text-gray-400">{nft.category}</p>
+            <p className="text-sm text-gray-400">{nft.categories}</p>
           </div>
 
           <motion.button

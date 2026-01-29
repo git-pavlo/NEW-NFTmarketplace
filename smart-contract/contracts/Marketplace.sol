@@ -127,4 +127,71 @@ contract Marketplace is ReentrancyGuard {
 
         emit ItemSold(itemId, msg.sender, item.price);
     }
+
+    struct Auction {
+    uint256 itemId;
+    address payable highestBidder;
+    uint256 highestBid;
+    uint256 endAt;
+    bool ended;
+}
+
+    mapping(uint256 => Auction) public auctions;
+
+    event AuctionStarted(uint256 indexed itemId, uint256 endTime);
+    event BidPlaced(uint256 indexed itemId, address bidder, uint256 amount);
+    event AuctionEnded(uint256 indexed itemId, address winner, uint256 amount);
+
+    function startAuction(uint256 itemId, uint256 durationInHours) external {
+        Item storage item = items[itemId];
+        require(item.seller == msg.sender, "Not the seller");
+        require(!item.sold, "Already sold");
+
+        auctions[itemId] = Auction({
+            itemId: itemId,
+            highestBidder: payable(address(0)),
+            highestBid: item.price, // Starting price
+            endAt: block.timestamp + (durationInHours * 1 hours),
+            ended: false
+        });
+        
+        emit AuctionStarted(itemId, auctions[itemId].endAt);
+    }
+
+    function placeBid(uint256 itemId) external payable nonReentrant {
+        Auction storage auction = auctions[itemId];
+        require(block.timestamp < auction.endAt, "Auction ended");
+        require(msg.value > auction.highestBid, "Bid too low");
+
+        // Refund the previous highest bidder
+        if (auction.highestBidder != address(0)) {
+            auction.highestBidder.transfer(auction.highestBid);
+        }
+
+        auction.highestBidder = payable(msg.sender);
+        auction.highestBid = msg.value;
+
+        emit BidPlaced(itemId, msg.sender, msg.value);
+    }
+
+    function endAuction(uint256 itemId) external nonReentrant {
+        Auction storage auction = auctions[itemId];
+        Item storage item = items[itemId];
+        require(block.timestamp >= auction.endAt, "Auction not ended");
+        require(!auction.ended, "Already settled");
+
+        auction.ended = true;
+
+        if (auction.highestBidder != address(0)) {
+            // Transfer NFT to winner and funds to seller
+            item.sold = true;
+            item.nft.transferFrom(address(this), auction.highestBidder, item.tokenId);
+            item.seller.transfer(auction.highestBid);
+        } else {
+            // No bids? Return NFT to seller
+            item.nft.transferFrom(address(this), item.seller, item.tokenId);
+        }
+
+        emit AuctionEnded(itemId, auction.highestBidder, auction.highestBid);
+    }
 }

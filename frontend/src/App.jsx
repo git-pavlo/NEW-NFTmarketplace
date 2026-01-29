@@ -86,7 +86,7 @@ export default function App() {
   };
 
   return (
-    <div className="dark min-h-screen bg-[#0a0b14] text-white">
+    <div className="dark min-h-screen bg-[#1e3a8a] text-white">
       <Navbar currentPage={currentPage} onNavigate={handleNavigate} />
       
       <main>{renderSection()}</main>
