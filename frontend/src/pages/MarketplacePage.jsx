@@ -109,8 +109,10 @@ export default function MarketplacePage({ onNavigate }) {
                   <h4 className="text-sm text-gray-400 mb-3">Category</h4>
                   <div className="flex flex-wrap gap-2">
                     {categories.map((category) => (
-                      <button
+                      <motion.button
                         key={category}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
                         onClick={() => setSelectedCategory(category)}
                         className={`px-4 py-2 rounded-xl text-sm transition-all ${
                           selectedCategory === category
@@ -119,11 +121,36 @@ export default function MarketplacePage({ onNavigate }) {
                         }`}
                       >
                         {category}
-                      </button>
+                      </motion.button>
                     ))}
                   </div>
                 </div>
 
+                <div className="mb-6">
+                  <h4 className="text-sm text-gray-400 mb-3">Status</h4>
+                  <div className="space-y-2">
+                    {[
+                      { value: 'all', label: 'All Items' },
+                      { value: 'buy-now', label: 'Buy Now' },
+                      { value: 'auction', label: 'On Auction' }
+                    ].map((option) => (
+                      <motion.button
+                        key={option.value}
+                        whileHover={{ scale: 1.02 }}
+                        onClick={() => setSelectedStatus(option.value)}
+                        className={`w-full px-4 py-2 rounded-xl text-left transition-all ${
+                          selectedStatus === option.value
+                            ? 'bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white'
+                            : 'glassmorphism hover:border-[rgba(138,106,255,0.5)]'
+                        }`}
+                      >
+                        {option.label}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Price Range */}
                 <div className="mb-6">
                   <h4 className="text-sm text-gray-400 mb-3">Price Range (ETH)</h4>
                   <input
@@ -174,7 +201,7 @@ export default function MarketplacePage({ onNavigate }) {
                       key={nft.itemId || nft.id}
                       nft={{
                         ...nft,
-                        category: nft.categories?.[0] || 'Art', // Map metadata array to card string
+                        categories: nft.categories?.[0] || 'Art', // Map metadata array to card string
                         owner: `${nft.seller.slice(0, 6)}...${nft.seller.slice(-4)}`
                       }}
                       onClick={() => onNavigate('detail', nft.tokenId)}

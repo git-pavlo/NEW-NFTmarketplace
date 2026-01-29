@@ -28,7 +28,7 @@ export function useUserNFTs(userAddress) {
             const meta = await fetch(uri).then(r => r.json());
 
             const nftData = {
-              id: tokenId,
+              tokenId: tokenId,
               image: meta.image,
               name: meta.name,
               description: meta.description,
@@ -63,7 +63,7 @@ export function useUserNFTs(userAddress) {
             const meta = await fetch(uri).then(r => r.json());
             
             onSale.push({
-              id: Number(item.tokenId),
+              tokenId: Number(item.tokenId),
               itemId: Number(item.itemId),
               price: ethers.formatEther(item.price),
               name: meta.name,

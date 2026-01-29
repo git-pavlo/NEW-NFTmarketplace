@@ -174,12 +174,12 @@ export default function UserProfilePage({ onNavigate }) {
         >
           {getCurrentNFTs().map((nft, index) => (
             <motion.div
-              key={nft.id}
+              key={nft.tokenId}
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.1 }}
             >
-              <NFTCard nft={nft} onClick={() => onNavigate('detail', nft.id )} />
+              <NFTCard nft={nft} onClick={() => onNavigate('detail', nft.tokenId )} />
             </motion.div>
           ))}
         </motion.div>

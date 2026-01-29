@@ -73,5 +73,5 @@ export async function getMarketItems() {
             }
         }
     }
-    return salenft;
+    return salenft; 
 }
