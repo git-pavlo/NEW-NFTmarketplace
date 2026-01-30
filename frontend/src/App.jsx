@@ -6,7 +6,7 @@ import MarketplacePage from './pages/MarketplacePage';
 import NFTDetailPage from './pages/NFTDetailPage';
 import CreateNFTPage from './pages/CreateNFTPage';
 import UserProfilePage from './pages/UserProfilePage';
-import AllNFTs from './pages/AllNFTs';
+import AllNFTsPage from './pages/AllNFTsPage';
 import { useAccount, useDisconnect } from "wagmi";
 import { motion } from 'motion/react';
 
@@ -35,7 +35,7 @@ export default function App() {
 
       case 'allnfts':
         return (
-          <MarketplacePage onNavigate={handleNavigate} />
+          <AllNFTsPage onNavigate={handleNavigate} />
         );
 
       case 'profile':

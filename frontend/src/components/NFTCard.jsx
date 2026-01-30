@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { Heart, Eye } from 'lucide-react';
 
 export default function NFTCard({ nft, onClick }) {
+  console.log(nft)
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
