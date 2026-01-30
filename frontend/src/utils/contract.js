@@ -25,20 +25,23 @@ export async function getAllNFTs() {
     const total = Number(await nft.tokenCount());
     const allNFTs = [];
 
-    for (let tokenId = 1; tokenId <= total; tokenId++) {
+    for (let i = 1; i <= total; i++) {
         try {
+            const tokenId = i;
             const uri = await nft.tokenURI(tokenId);
+            const owner = await nft.ownerOf(tokenId); // Fetch the owner
             const meta = await fetch(uri).then(res => res.json());
 
             allNFTs.push({
-                id: tokenId,
+                tokenId: tokenId, // Consistent naming
                 image: meta.image,
                 name: meta.name,
                 description: meta.description,
+                seller: owner, // Map owner to seller for UI compatibility
                 categories: meta.categories || []
             });
         } catch (err) {
-            console.error(`Error loading NFT ${tokenId}:`, err);
+            console.error(`Error loading NFT ${i}:`, err);
         }
     }
     return allNFTs;

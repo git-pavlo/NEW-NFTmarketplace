@@ -129,12 +129,12 @@ contract Marketplace is ReentrancyGuard {
     }
 
     struct Auction {
-    uint256 itemId;
-    address payable highestBidder;
-    uint256 highestBid;
-    uint256 endAt;
-    bool ended;
-}
+        uint256 itemId;
+        address payable highestBidder;
+        uint256 highestBid;
+        uint256 endAt;
+        bool ended;
+    }
 
     mapping(uint256 => Auction) public auctions;
 
@@ -151,27 +151,47 @@ contract Marketplace is ReentrancyGuard {
             itemId: itemId,
             highestBidder: payable(address(0)),
             highestBid: item.price, // Starting price
-            endAt: block.timestamp + (durationInHours * 1 hours),
+            endAt: block.timestamp + (durationInHours * 1 minutes),
             ended: false
         });
         
         emit AuctionStarted(itemId, auctions[itemId].endAt);
     }
 
+    mapping(address => uint256) public pendingWithdrawals; // For Pull pattern refunds
+
     function placeBid(uint256 itemId) external payable nonReentrant {
         Auction storage auction = auctions[itemId];
         require(block.timestamp < auction.endAt, "Auction ended");
         require(msg.value > auction.highestBid, "Bid too low");
 
-        // Refund the previous highest bidder
+        // 1. Pull over Push Pattern
+        // Instead of transferring now, store the refund for the previous bidder
         if (auction.highestBidder != address(0)) {
-            auction.highestBidder.transfer(auction.highestBid);
+            pendingWithdrawals[auction.highestBidder] += auction.highestBid;
+        }
+
+        // 2. Time Extension (Anti-Snipping)
+        // If bid is placed in the last 1 minute, extend auction by 1 minute
+        uint256 timeBuffer = 1 minutes;
+        if (auction.endAt - block.timestamp < timeBuffer) {
+            auction.endAt += timeBuffer;
         }
 
         auction.highestBidder = payable(msg.sender);
         auction.highestBid = msg.value;
 
         emit BidPlaced(itemId, msg.sender, msg.value);
+    }
+
+    // Function for users to manually claim their refunds
+    function withdrawRefund() external nonReentrant {
+        uint256 amount = pendingWithdrawals[msg.sender];
+        require(amount > 0, "No funds to withdraw");
+
+        pendingWithdrawals[msg.sender] = 0;
+        (bool success, ) = payable(msg.sender).call{value: amount}("");
+        require(success, "Transfer failed");
     }
 
     function endAuction(uint256 itemId) external nonReentrant {

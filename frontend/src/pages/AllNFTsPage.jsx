@@ -4,11 +4,11 @@ import { Search, SlidersHorizontal, Loader2 } from 'lucide-react';
 import { getAllNFTs, categories } from '../utils/contract';
 import NFTCard from '../components/NFTCard';
 
-export default function AllNFTs({ onNavigate }) {
+export default function AllNFTsPage({ onNavigate }) {
   const [nfts, setNfts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [selectedStatus, setSelectedStatus] = useState('all');
+  // const [selectedStatus, setSelectedStatus] = useState('all');
   const [priceRange, setPriceRange] = useState([0, 10]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
@@ -28,6 +28,8 @@ export default function AllNFTs({ onNavigate }) {
     fetchNFTs();
   }, []);
 
+  console.log(nfts)
+
   const filteredNFTs = nfts.filter((nft) => {
     const nftCategory = nft.categories?.[0] || 'Art';
     const matchesCategory =
@@ -35,17 +37,21 @@ export default function AllNFTs({ onNavigate }) {
 
     // Status logic: In a live market, items are either 'buy-now' or 'auction' 
     // depending on your contract logic. For now, we mirror your filter.
-    const matchesStatus =
-      selectedStatus === 'all' || (selectedStatus === 'buy-now');
+    // const matchesStatus =
+    //   selectedStatus === 'all' || (selectedStatus === 'buy-now');
 
-    const matchesPrice =
-      Number(nft.price) >= priceRange[0] && Number(nft.price) <= priceRange[1];
+    // const matchesPrice =
+    //   Number(nft.price) >= priceRange[0] && Number(nft.price) <= priceRange[1];
 
     const matchesSearch =
       nft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       nftCategory.toLowerCase().includes(searchQuery.toLowerCase());
 
-    return matchesCategory && matchesStatus && matchesPrice && matchesSearch;
+    console.log(nft)
+    console.log(matchesCategory)
+    // console.log(matchesPrice)
+    console.log(matchesSearch)
+    return matchesCategory && matchesSearch;
   });
 
   return (
@@ -58,7 +64,7 @@ export default function AllNFTs({ onNavigate }) {
           className="mb-8"
         >
           <h1 className="text-4xl md:text-5xl mb-4">
-            Explore <span className="neon-text">Marketplace</span>
+            Explore <span className="neon-text">All NFTs</span>
           </h1>
           <p className="text-gray-400">
             Discover real digital assets synced with the blockchain
@@ -128,7 +134,7 @@ export default function AllNFTs({ onNavigate }) {
 
                 <div className="mb-6">
                   <h4 className="text-sm text-gray-400 mb-3">Status</h4>
-                  <div className="space-y-2">
+                  {/* <div className="space-y-2">
                     {[
                       { value: 'all', label: 'All Items' },
                       { value: 'buy-now', label: 'Buy Now' },
@@ -147,11 +153,11 @@ export default function AllNFTs({ onNavigate }) {
                         {option.label}
                       </motion.button>
                     ))}
-                  </div>
+                  </div> */}
                 </div>
 
                 {/* Price Range */}
-                <div className="mb-6">
+                {/* <div className="mb-6">
                   <h4 className="text-sm text-gray-400 mb-3">Price Range (ETH)</h4>
                   <input
                     type="range"
@@ -166,12 +172,12 @@ export default function AllNFTs({ onNavigate }) {
                     <span>{priceRange[0]} ETH</span>
                     <span>{priceRange[1]} ETH</span>
                   </div>
-                </div>
+                </div> */}
 
                 <button
                   onClick={() => {
                     setSelectedCategory('All');
-                    setPriceRange([0, 10]);
+                    // setPriceRange([0, 10]);
                     setSearchQuery('');
                   }}
                   className="w-full py-2 rounded-xl glassmorphism hover:bg-white/5 transition-all text-sm"
@@ -196,13 +202,16 @@ export default function AllNFTs({ onNavigate }) {
                 </div>
 
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {filteredNFTs.map((nft, index) => (
+                  {filteredNFTs.map((nft) => (
                     <NFTCard
-                      key={nft.itemId || nft.id}
+                      key={nft.tokenId}
                       nft={{
                         ...nft,
-                        categories: nft.categories?.[0] || 'Art', // Map metadata array to card string
-                        owner: `${nft.seller.slice(0, 6)}...${nft.seller.slice(-4)}`
+                        categories: nft.categories?.[0] || 'Art',
+                        // Use fallback if seller is missing
+                        owner: nft.seller 
+                          ? `${nft.seller.slice(0, 6)}...${nft.seller.slice(-4)}` 
+                          : 'Unknown'
                       }}
                       onClick={() => onNavigate('detail', nft.tokenId)}
                     />

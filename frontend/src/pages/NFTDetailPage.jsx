@@ -1,10 +1,9 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Heart, Share2, MoreHorizontal, TrendingUp, Clock, Gavel } from 'lucide-react';
 import { toast } from 'sonner@2.0.3';
 import { getNFTContract, getMarketContract, MARKET_CONTRACT_ADDRESS, NFT_CONTRACT_ADDRESS } from '@/utils/contract';
 import { ethers } from 'ethers'
-   
+import { Heart, Share2, MoreHorizontal, TrendingUp, Clock, Gavel, CheckCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
 export default function NFTDetailPage({ nftId, onNavigate }) {
@@ -14,15 +13,13 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
   const [price, setPrice] = useState('');
   const [auctionPrice, setAuctionPrice] = useState(''); // Starting Bid
   const [auctionDuration, setAuctionDuration] = useState(''); // Hours
-
   const [marketItem, setMarketItem] = useState(null);
   const [activeTab, setActiveTab] = useState('properties');
   const [loading, setLoading] = useState(true); 
   const [bidAmount, setBidAmount] = useState('');
   const [auctionData, setAuctionData] = useState(null);
-
-  // const shortAddress = (addr) =>
-  //   `${addr.slice(0, 6)}...${addr.slice(-4)}`;
+  const [pendingRefund, setPendingRefund] = useState('0');
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: false });
 
   useEffect(() => {
     const loadNFTData = async () => {
@@ -49,7 +46,11 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         for (let i = 1; i <= itemCount; i++) {
           const item = await marketplace.items(i);
           if (Number(item.tokenId) === Number(nftId) && !item.sold && !item.cancelled) {
-            foundMarketItem = { itemId: Number(item.itemId), price: ethers.formatEther(item.price), seller: item.seller };
+            foundMarketItem = { 
+              itemId: Number(item.itemId), 
+              price: ethers.formatEther(item.price), 
+              seller: item.seller 
+            };
             
             // Check if there is an active auction for this item
             const auction = await marketplace.auctions(item.itemId);
@@ -77,7 +78,17 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
           setNFTStatus('view-only');
         }
 
-        setNft({ id: nftId, owner, ...meta, price: foundMarketItem ? foundMarketItem.price : 'Not for sale' });
+        setNft({ 
+          id: nftId, 
+          owner, 
+          ...meta, 
+          price: foundMarketItem ? foundMarketItem.price : 'Not for sale',
+          priceHistory: meta.priceHistory || [
+            { date: '2024-01-01', price: 0.5 },
+            { date: '2024-02-01', price: 0.8 },
+            { date: '2024-03-01', price: foundMarketItem ? parseFloat(foundMarketItem.price) : 0.8 }
+          ]
+        });
         setMarketItem(foundMarketItem);
       } catch (err) {
         console.error("Error loading NFT:", err);
@@ -87,6 +98,42 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
     };
     loadNFTData();
   }, [nftId]);
+
+  useEffect(() => {
+    const checkRefunds = async () => {
+      if (!userAddress) return;
+      try {
+        const marketplace = await getMarketContract();
+        const amount = await marketplace.pendingWithdrawals(userAddress);
+        setPendingRefund(ethers.formatEther(amount));
+      } 
+      catch (e) { console.error(e); }
+    };
+    checkRefunds();
+  }, [userAddress, nftId]);
+
+  useEffect(() => {
+    if (NFTstatus !== 'auction' || !auctionData) return;
+
+    const timer = setInterval(() => {
+      const now = new Date().getTime();
+      const distance = auctionData.endAt - now;
+
+      if (distance < 0) {
+        clearInterval(timer);
+        setTimeLeft({ hours: 0, minutes: 0, seconds: 0, expired: true });
+      } else {
+        setTimeLeft({
+          hours: Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)),
+          minutes: Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60)),
+          seconds: Math.floor((distance % (1000 * 60)) / 1000),
+          expired: false
+        });
+      }
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [NFTstatus, auctionData]);
 
   const handleSale = async () => {
     const nftContract = await getNFTContract();
@@ -170,7 +217,6 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
 
       // 1. Approve
       await (await nftContract.approve(MARKET_CONTRACT_ADDRESS, nftId)).wait();
-
       // 2. List Item (to get itemId)
       const listTx = await marketplace.listItem(NFT_CONTRACT_ADDRESS, nftId, ethers.parseEther(auctionPrice));
       const receipt = await listTx.wait();
@@ -181,14 +227,13 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
       }).find(e => e?.name === 'ItemListed');
       
       const newItemId = event.args.itemId;
-
+      
       // 3. Start Auction
       toast.loading("Initiating Auction: Part 2 - Setting duration...", { id: toastId });
-      const auctionTx = await marketplace.startAuction(newItemId, parseInt(1000*auctionDuration));
+      const auctionTx = await marketplace.startAuction(newItemId, parseInt(auctionDuration));
       await auctionTx.wait();
 
       toast.success("Auction live!", { id: toastId });
-      window.location.reload();
     } catch (err) {
       toast.error(err.reason || err.message);
     }
@@ -208,6 +253,33 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
       window.location.reload();
     } catch (err) {
       toast.error(err.reason || err.message);
+    }
+  };
+
+  const handleEndAuction = async () => {
+    const toastId = toast.loading("Settling auction and transferring assets...");
+    try {
+      const marketplace = await getMarketContract();
+      const tx = await marketplace.endAuction(marketItem.itemId);
+      await tx.wait();
+
+      toast.success("Auction settled successfully!", { id: toastId });
+      onNavigate('profile');
+    } catch (err) {
+      toast.error(err.reason || err.message, { id: toastId });
+    }
+  };
+
+  const handleWithdrawRefund = async () => {
+    const toastId = toast.loading("Claiming your refund...");
+    try {
+      const marketplace = await getMarketContract();
+      const tx = await marketplace.withdrawRefund();
+      await tx.wait();
+      toast.success("Refund claimed!", { id: toastId });
+      setPendingRefund('0');
+    } catch (err) {
+      toast.error(err.reason || err.message, { id: toastId });
     }
   };
   
@@ -242,6 +314,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
           >
             <div className="glassmorphism rounded-3xl p-4 sticky top-24">
               <div className="relative aspect-square rounded-2xl overflow-hidden mb-4">
@@ -296,15 +369,11 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                 <span className="px-4 py-1 rounded-full bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-sm">
                   {nft.categories}
                 </span>
-                <span
-                  className={`px-4 py-1 rounded-full text-sm ${
-                    nft.status === 'auction' ? 'bg-[#8a6aff]/20' : 'bg-[#38bdf8]/20'
-                  }`}
-                >
-                  {nft.status === 'auction' ? 'Live Auction' : 'Fixed Price'}
+                <span className="px-4 py-1 rounded-full text-sm bg-white/10">
+                  {NFTstatus === 'auction' ? 'Live Auction' : 'Fixed Price'}
                 </span>
               </div>
-              <h1 className="text-4xl md:text-5xl neon-text mb-4">{nft.name}</h1>
+              <h1 className="text-4xl md:text-5xl neon-text mb-4">{nft.name} #{nftId}</h1>
             </div>
 
             {/* Creator and Owner */}
@@ -331,16 +400,39 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                 </div>
                 {nft.status === 'auction' && (
                   <div className="text-right">
-                    <p className="text-sm text-gray-400 mb-1">Auction ends in</p>
-                    <div className="flex items-center gap-2 text-[#8a6aff]">
+                    <p className="text-sm text-gray-400 mb-1">
+                      {timeLeft.expired ? 'Auction Ended' : 'Ends in'}
+                    </p>
+                    <div className={`flex items-center gap-2 ${timeLeft.expired ? 'text-green-400' : 'text-[#8a6aff]'}`}>
                       <Clock className="w-5 h-5" />
-                      <span className="text-xl">23:45:12</span>
+                      <span className="text-xl font-mono">
+                        {timeLeft.expired 
+                          ? "Colose" 
+                          : `${timeLeft.hours}h ${timeLeft.minutes}m ${timeLeft.seconds}s`}
+                      </span>
                     </div>
                   </div>
                 )}
               </div>
 
               {/* Functions */}
+              {parseFloat(pendingRefund) > 0 && (
+                <div className="glassmorphism p-4 rounded-2xl mb-6 border-l-4 border-yellow-500">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm text-gray-400">You were outbid! Pendding Refund:</p>
+                      <p className="text-xl font-bold">{pendingRefund} ETH</p>
+                    </div>
+                    <button 
+                      onClick={handleWithdrawRefund}
+                      className="px-6 py-2 bg-yellow-600 rounded-xl hover:bg-yellow-500 transition-colors"
+                    >
+                      Claim Refund
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {NFTstatus === 'collected' && (
                 <div className="flex gap-3">
                   {/* Fixed Sale */}
@@ -417,43 +509,24 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                 </div>
               )}
               {NFTstatus === 'auction' && (
-                <div className="flex flex-col gap-4">
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-sm text-gray-400">Current Highest Bid</p>
-                      <p className="text-4xl neon-text">{auctionData.highestBid} ETH</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm text-gray-400">Ends at</p>
-                      <p className="text-lg text-[#8a6aff]">{new Date(auctionData.endAt).toLocaleTimeString()}</p>
-                    </div>
-                  </div>
-                  {marketItem.seller.toLowerCase() === userAddress?.toLowerCase() ? (
-                    <div className="p-4 bg-orange-500/10 border border-orange-500/30 rounded-2xl">
-                      <p className="text-orange-400 text-sm text-center">
-                        You are the seller of this auction. You cannot place bids.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex gap-3">
-                      <input 
-                        type="text" 
-                        placeholder="Your bid (ETH)" 
-                        value={bidAmount} 
-                        onChange={(e) => setBidAmount(e.target.value)} 
-                        className="flex-1 bg-white/5 p-4 rounded-2xl" 
-                      />
-                      <button 
-                        onClick={handleBid} 
-                        className="px-8 bg-purple-600 rounded-2xl hover:bg-purple-500 transition-colors"
-                      >
-                        Place Bid
+                <div className="space-y-4">
+                  {timeLeft.expired ? (
+                    ((auctionData.highestBidder.toLowerCase() === userAddress?.toLowerCase() || 
+                      marketItem?.seller.toLowerCase() === userAddress?.toLowerCase()) && (
+                      <button onClick={handleEndAuction} className="w-full py-4 bg-green-600 rounded-2xl font-bold flex items-center justify-center gap-2">
+                        <CheckCircle className="w-5 h-5"/> Settle & Finalize Auction
                       </button>
-                    </div>
+                    ))
+                  ) : (
+                    userAddress?.toLowerCase() !== marketItem?.seller.toLowerCase() && (
+                      <div className="flex gap-3">
+                        <input type="text" placeholder="Your bid (ETH)" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} className="flex-1 bg-white/5 p-4 rounded-2xl" />
+                        <button onClick={handleBid} className="px-8 bg-purple-600 rounded-2xl font-bold">Place Bid</button>
+                      </div>
+                    )
                   )}
                 </div>
               )}
-
             </div>
 
             {/* Price History Chart */}

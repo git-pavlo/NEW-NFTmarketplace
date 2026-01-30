@@ -66,7 +66,7 @@ export default function CreateNFTPage() {
           timeout: 600000, 
         }
       );
-
+      console.log("hi")
       const fileUrl = `https://gateway.pinata.cloud/ipfs/${fileRes.data.IpfsHash}`;
 
       // 3. Upload Metadata JSON
