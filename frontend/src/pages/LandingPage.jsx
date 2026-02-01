@@ -2,9 +2,12 @@ import { motion } from 'motion/react';
 import { useEffect, useState, useMemo } from 'react';
 import { TrendingUp, Users, Layers, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import NFTCard from '../components/NFTCard';
+import HeroSlider from '@/components/HeroSlider';
 import { getAllNFTs } from '../utils/contract';
+import { useNavigate } from 'react-router-dom';
 
 export default function LandingPage({ onNavigate }) {
+  const navigate = useNavigate();
   const [currentSlide, setCurrentSlide] = useState(0);
   const [nfts, setNfts] = useState([]);
   const [loading, setLoading] = useState(true); // Fixed: Added missing loading state
@@ -96,10 +99,10 @@ export default function LandingPage({ onNavigate }) {
           <motion.div
             animate={{
               background: [
-                'radial-gradient(circle at 20% 50%, rgba(138, 106, 255, 0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 80% 50%, rgba(56, 189, 248, 0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 50% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 50%)',
-                'radial-gradient(circle at 20% 50%, rgba(138, 106, 255, 0.15) 0%, transparent 50%)'
+                'radial-gradient(circle at 20% 50%, rgba(128, 101, 224, 0.81) 0%, transparent 50%)',
+                'radial-gradient(circle at 80% 50%, rgba(43, 147, 192, 0.84) 0%, transparent 50%)',
+                'radial-gradient(circle at 50% 80%, rgba(52, 221, 247, 0.8) 0%, transparent 50%)',
+                'radial-gradient(circle at 20% 50%, rgba(84, 45, 224, 0.8) 0%, transparent 50%)'
               ]
             }}
             transition={{ duration: 10, repeat: Infinity }}
@@ -156,6 +159,8 @@ export default function LandingPage({ onNavigate }) {
           </motion.div>
         </div>
       </section>
+
+      <HeroSlider />
 
       {/* Featured NFT Carousel */}
       {featuredNFTs.length > 0 && (

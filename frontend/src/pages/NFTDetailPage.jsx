@@ -8,6 +8,8 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export default function NFTDetailPage({ nftId, onNavigate }) {
   const [userAddress, setUserAddress] = useState(null); 
+  const [auctionData, setAuctionData] = useState(null);
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: false });
   const [NFTstatus, setNFTStatus] = useState('');
   const [nft, setNft] = useState(null);
   const [price, setPrice] = useState('');
@@ -17,9 +19,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
   const [activeTab, setActiveTab] = useState('properties');
   const [loading, setLoading] = useState(true); 
   const [bidAmount, setBidAmount] = useState('');
-  const [auctionData, setAuctionData] = useState(null);
   const [pendingRefund, setPendingRefund] = useState('0');
-  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: false });
 
   useEffect(() => {
     const loadNFTData = async () => {
@@ -98,6 +98,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
     };
     loadNFTData();
   }, [nftId]);
+  console.log(NFTstatus)
 
   useEffect(() => {
     const checkRefunds = async () => {
@@ -393,12 +394,12 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
               <div className="flex items-center justify-between mb-4">
                 <div>
                   <p className="text-sm text-gray-400 mb-1">
-                    {nft.status === 'auction' ? 'Current Bid' : 'Price'}
+                    {NFTstatus === 'auction' ? 'Current Bid' : 'Price'}
                   </p>
                   <p className="text-4xl neon-text">{nft.price} ETH</p>
                   <p className="text-gray-400 mt-1">≈ ${(nft.price * 2400).toFixed(2)} USD</p>
                 </div>
-                {nft.status === 'auction' && (
+                {NFTstatus === 'auction' && (
                   <div className="text-right">
                     <p className="text-sm text-gray-400 mb-1">
                       {timeLeft.expired ? 'Auction Ended' : 'Ends in'}
@@ -423,12 +424,14 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                       <p className="text-sm text-gray-400">You were outbid! Pendding Refund:</p>
                       <p className="text-xl font-bold">{pendingRefund} ETH</p>
                     </div>
-                    <button 
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                       onClick={handleWithdrawRefund}
-                      className="px-6 py-2 bg-yellow-600 rounded-xl hover:bg-yellow-500 transition-colors"
+                      className="w-full button-glow flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
                     >
                       Claim Refund
-                    </button>
+                    </motion.button>
                   </div>
                 </div>
               )}
@@ -477,7 +480,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleStartAuction} 
-                      className="w-full bg-purple-600 py-2 rounded-lg flex items-center justify-center gap-2"
+                      className="w-full button-glow flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
                     >
                       <Gavel className="w-4 h-4" /> Start Auction
                     </motion.button>
@@ -513,15 +516,27 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                   {timeLeft.expired ? (
                     ((auctionData.highestBidder.toLowerCase() === userAddress?.toLowerCase() || 
                       marketItem?.seller.toLowerCase() === userAddress?.toLowerCase()) && (
-                      <button onClick={handleEndAuction} className="w-full py-4 bg-green-600 rounded-2xl font-bold flex items-center justify-center gap-2">
+                      <motion.button 
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                        onClick={handleEndAuction} 
+                        className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                      >
                         <CheckCircle className="w-5 h-5"/> Settle & Finalize Auction
-                      </button>
+                      </motion.button>
                     ))
                   ) : (
                     userAddress?.toLowerCase() !== marketItem?.seller.toLowerCase() && (
                       <div className="flex gap-3">
                         <input type="text" placeholder="Your bid (ETH)" value={bidAmount} onChange={(e) => setBidAmount(e.target.value)} className="flex-1 bg-white/5 p-4 rounded-2xl" />
-                        <button onClick={handleBid} className="px-8 bg-purple-600 rounded-2xl font-bold">Place Bid</button>
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={handleBid}
+                          className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                        >
+                          Place Bid
+                        </motion.button>
                       </div>
                     )
                   )}

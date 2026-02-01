@@ -61,6 +61,11 @@ export async function getMarketItems() {
                 const uri = await nft.tokenURI(item.tokenId);
                 const meta = await fetch(uri).then(res => res.json());
 
+                // Fetch auction data for this specific item
+                const auction = await market.auctions(item.itemId);
+                // An item is an active auction if it has an end time and hasn't ended
+                const isAuction = Number(auction.endAt) > 0 && !auction.ended;                
+
                 salenft.push({
                     itemId: Number(item.itemId),
                     tokenId: Number(item.tokenId),
@@ -69,7 +74,8 @@ export async function getMarketItems() {
                     image: meta.image,
                     name: meta.name,
                     description: meta.description,
-                    categories: meta.categories || []
+                    categories: meta.categories || [],
+                    isAuction: isAuction // New property for filtering
                 });
             } catch (err) {
                 console.error(`Error loading market item ${i}:`, err);

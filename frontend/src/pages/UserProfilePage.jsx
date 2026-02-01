@@ -1,12 +1,10 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Copy, Share2, Settings, ExternalLink } from 'lucide-react';
-import { mockNFTs } from '../lib/mockData';
+import { Copy, Share2, Settings, ExternalLink } from 'lucide-react'; 
 import NFTCard from '../components/NFTCard';
 import { toast } from 'sonner@2.0.3';
 import { useAccount, useDisconnect } from 'wagmi';
 import { useUserNFTs } from './useUserNFTs';
-
 
 export default function UserProfilePage({ onNavigate }) {
   const [activeTab, setActiveTab] = useState('collected');
@@ -129,8 +127,8 @@ export default function UserProfilePage({ onNavigate }) {
           transition={{ delay: 0.2 }}
           className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12"
         >
-          <StatBox label="NFTs Owned" value="247" />
-          <StatBox label="Created" value="12" />
+          <StatBox label="NFTs Owned" value={collectedNFTs.length + onSaleNFTs.length} />
+          <StatBox label="Created" value={ createdNFTs.length } />
           <StatBox label="Total Volume" value="145.8 ETH" />
           <StatBox label="Floor Price" value="2.4 ETH" />
         </motion.div>
