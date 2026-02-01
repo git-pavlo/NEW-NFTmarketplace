@@ -3,12 +3,12 @@ import { motion } from 'motion/react';
 import { Search, SlidersHorizontal, Loader2 } from 'lucide-react';
 import { getAllNFTs, categories } from '../utils/contract';
 import NFTCard from '../components/NFTCard';
+import HeroSlider from '@/components/HeroSlider';
 
 export default function AllNFTsPage({ onNavigate }) {
   const [nfts, setNfts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('All');
-  // const [selectedStatus, setSelectedStatus] = useState('all');
   const [priceRange, setPriceRange] = useState([0, 10]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
@@ -35,26 +35,16 @@ export default function AllNFTsPage({ onNavigate }) {
     const matchesCategory =
       selectedCategory === 'All' || nftCategory === selectedCategory;
 
-    // Status logic: In a live market, items are either 'buy-now' or 'auction' 
-    // depending on your contract logic. For now, we mirror your filter.
-    // const matchesStatus =
-    //   selectedStatus === 'all' || (selectedStatus === 'buy-now');
-
-    // const matchesPrice =
-    //   Number(nft.price) >= priceRange[0] && Number(nft.price) <= priceRange[1];
-
     const matchesSearch =
       nft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       nftCategory.toLowerCase().includes(searchQuery.toLowerCase());
 
-    console.log(nft)
-    console.log(matchesCategory)
-    // console.log(matchesPrice)
-    console.log(matchesSearch)
     return matchesCategory && matchesSearch;
   });
 
   return (
+    <>
+    <HeroSlider />
     <div className="min-h-screen pt-24 px-4 pb-20">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -231,5 +221,6 @@ export default function AllNFTsPage({ onNavigate }) {
         </div>
       </div>
     </div>
+    </>
   );
 }

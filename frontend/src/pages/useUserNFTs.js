@@ -32,6 +32,7 @@ export function useUserNFTs(userAddress) {
               image: meta.image,
               name: meta.name,
               description: meta.description,
+              creator: meta.creator,
               categories: meta.categories || []
             };
 

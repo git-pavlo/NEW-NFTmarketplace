@@ -20,6 +20,8 @@ export default function CreateNFTPage() {
     name: '',
     description: '',
     category: 'Art',
+    price: 0,
+    creator: '',
     royalties: 5 // Default 5%
   });
 
@@ -40,18 +42,6 @@ export default function CreateNFTPage() {
       const fileData = new FormData();
       console.log(uploadedFile)
       fileData.append('file', uploadedFile);
-
-      // // Optional: Add Pinata Metadata to help the server process it faster
-      // const metadata = JSON.stringify({
-      //   name: formData.name,
-      // });
-      // fileData.append('pinataMetadata', metadata);
-
-      // const options = JSON.stringify({
-      //   cidVersion: 0,
-      // });
-      // fileData.append('pinataOptions', options);
-      // console.log(fileData);
 
       // 2. Upload Image using Axios (Better for large files/timeouts)
       const fileRes = await axios.post(
@@ -75,6 +65,8 @@ export default function CreateNFTPage() {
         description: formData.description,
         image: fileUrl,
         categories: [formData.category],
+        creator: formData.creator,
+        price: formData.price,
         attributes: [{ trait_type: "Royalty", value: `${formData.royalties}%` }]
       };
 
@@ -108,7 +100,8 @@ export default function CreateNFTPage() {
       const contract = await getNFTContract();
       const signer = contract.runner;
       const walletAddress = await signer.getAddress();
-
+      
+      setFormData({ ...formData, creator: walletAddress })
       console.log("walletAddress>>>", walletAddress);
 
       // IPFS Upload phase
@@ -166,7 +159,7 @@ export default function CreateNFTPage() {
   };
 
   return (
-    <div className="min-h-screen pt-24 px-4 pb-20">
+    <div className="min-h-screen pt-24 px-4 pb-20 z-[1]">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
         <motion.div
@@ -205,7 +198,7 @@ export default function CreateNFTPage() {
                       <Upload className="w-10 h-10" />
                     </motion.div>
                     <p className="text-lg mb-2">Drop your file here, or browse</p>
-                    <p className="text-sm text-gray-400">PNG, JPG, GIF, MP4, Max 100MB</p>
+                    <p className="text-sm text-gray-400">PNG, JPG, GIF, Max 10MB</p>
                   </div>
                 ) : (
                   <div className="relative rounded-2xl overflow-hidden group">
@@ -270,7 +263,7 @@ export default function CreateNFTPage() {
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })
                 }
-                className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all"
+                className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all z-[1]"
               />
             </div>
 
@@ -322,7 +315,7 @@ export default function CreateNFTPage() {
                 <input
                   type="range"
                   min="0"
-                  max="30"
+                  max="10"
                   step="0.5"
                   value={formData.royalties}
                   onChange={(e) =>

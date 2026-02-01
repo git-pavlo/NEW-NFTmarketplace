@@ -93,9 +93,22 @@ export default function App() {
 
   return (
     <div className="dark min-h-screen bg-[#1e3a8a] text-white">
+      <div 
+        className="fixed inset-0 z-[-1] bg-[#eff6ff]" 
+        style={{
+          backgroundImage: `url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.3 // Subtle background image
+        }}
+      />
+
       <Navbar currentPage={currentPage} onNavigate={handleNavigate} />
       
-      <main>{renderSection()}</main>
+      <div className="relative z-10">
+        <Navbar currentPage={currentPage} onNavigate={handleNavigate} />
+        <main>{renderSection()}</main>
+      </div>
 
       <Toaster 
         position="bottom-right"

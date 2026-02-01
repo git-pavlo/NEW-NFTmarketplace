@@ -12,6 +12,49 @@ export default function MarketplacePage({ onNavigate }) {
   const [priceRange, setPriceRange] = useState([0, 10]);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(true);
+  const [isSettling, setIsSettling] = useState(false);
+  const [userAddress, setUserAddress] = useState(null); 
+  const [auctionData, setAuctionData] = useState(null);
+  const [timeLeft, setTimeLeft] = useState({ hours: 0, minutes: 0, seconds: 0, expired: false });
+
+  useEffect(() => {
+    const triggerAutoSettlement = async () => {
+      // Only attempt automatic settlement if:
+      // 1. The auction has expired
+      // 2. We haven't tried settling yet
+      // 3. The auction hasn't already been marked as 'ended' in our local data
+      // 4. The current user is either the Winner or the Seller
+      if (
+        timeLeft.expired && 
+        !isSettling && 
+        auctionData && 
+        !auctionData.ended && 
+        userAddress
+      ) {
+        const isWinner = auctionData.highestBidder.toLowerCase() === userAddress.toLowerCase();
+        const isSeller = marketItem?.seller.toLowerCase() === userAddress.toLowerCase();
+
+        if (isWinner || isSeller) {
+          setIsSettling(true); // Lock the process
+          
+          // Notify the user why the wallet is opening
+          toast.info("Auction ended! Initiating automatic settlement...", {
+            description: isWinner ? "You won! Claiming NFT..." : "Auction ended! Transferring funds...",
+            duration: 5000
+          });
+
+          try {
+            await handleEndAuction();
+          } catch (err) {
+            console.error("Auto-settlement failed:", err);
+            setIsSettling(false); // Allow manual retry if auto fails
+          }
+        }
+      }
+    };
+
+    triggerAutoSettlement();
+  }, [timeLeft.expired, userAddress, auctionData, isSettling]);
 
   useEffect(() => {
     async function fetchNFTs() {
@@ -36,10 +79,12 @@ export default function MarketplacePage({ onNavigate }) {
     // Status logic: In a live market, items are either 'buy-now' or 'auction' 
     // depending on your contract logic. For now, we mirror your filter.
     const matchesStatus =
-      selectedStatus === 'all' || (selectedStatus === 'buy-now');
+      selectedStatus === 'all' || 
+      (selectedStatus === 'buy-now' && !nft.isAuction) || 
+      (selectedStatus === 'auction' && nft.isAuction);
 
     const matchesPrice =
-      Number(nft.price) >= priceRange[0] && Number(nft.price) <= priceRange[1];
+      Number(nft.price) >= priceRange[0] && Number(nft.price) <= 100*priceRange[1];
 
     const matchesSearch =
       nft.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -197,15 +242,15 @@ export default function MarketplacePage({ onNavigate }) {
 
                 <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
                   {filteredNFTs.map((nft, index) => (
-                    <NFTCard
-                      key={nft.itemId || nft.id}
-                      nft={{
-                        ...nft,
-                        categories: nft.categories?.[0] || 'Art', // Map metadata array to card string
-                        owner: `${nft.seller.slice(0, 6)}...${nft.seller.slice(-4)}`
-                      }}
-                      onClick={() => onNavigate('detail', nft.tokenId)}
-                    />
+                  <NFTCard
+                    key={nft.itemId}
+                    nft={{
+                      ...nft,
+                      categories: nft.categories?.[0] || 'Art',
+                      owner: `${nft.seller.slice(0, 6)}...${nft.seller.slice(-4)}`
+                    }}
+                    onClick={() => onNavigate('detail', nft.tokenId)}
+                  />
                   ))}
                 </div>
 
