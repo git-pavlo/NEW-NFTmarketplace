@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { toast } from 'sonner@2.0.3';
-import { getNFTContract, getMarketContract, MARKET_CONTRACT_ADDRESS, NFT_CONTRACT_ADDRESS } from '@/utils/contract';
+import { getNFTContract, getMarketContract, getTokenPriceHistory, MARKET_CONTRACT_ADDRESS, NFT_CONTRACT_ADDRESS } from '@/utils/contract';
 import { ethers } from 'ethers'
 import { Heart, Share2, MoreHorizontal, TrendingUp, Clock, Gavel, CheckCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -27,6 +27,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         setLoading(true);
         const nftContract = await getNFTContract();
         const marketplace = await getMarketContract();
+        const history = await getTokenPriceHistory(nftId);
         
         // Get current user address
         const signer = await (new ethers.BrowserProvider(window.ethereum)).getSigner();
@@ -83,10 +84,8 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
           owner, 
           ...meta, 
           price: foundMarketItem ? foundMarketItem.price : 'Not for sale',
-          priceHistory: meta.priceHistory || [
-            { date: '2024-01-01', price: 0.5 },
-            { date: '2024-02-01', price: 0.8 },
-            { date: '2024-03-01', price: foundMarketItem ? parseFloat(foundMarketItem.price) : 0.8 }
+          priceHistory: history.length > 0 ? history : [
+            { date: new Date().toISOString().split('T')[0], price: 0 }
           ]
         });
         setMarketItem(foundMarketItem);
@@ -142,10 +141,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
     try {
       if (!price) throw new Error("Enter price");
 
-      toast.loading("Approve & list NFT...");
 
-      console.log(nftContract)
-      console.log(nftId)
       // approve
       await nftContract.approve(
         MARKET_CONTRACT_ADDRESS,
@@ -158,6 +154,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         nftId,
         ethers.parseEther(price)
       );
+      toast.loading("Approve & list NFT...");
       await tx.wait();
 
       toast.success("NFT listed successfully!");
@@ -236,6 +233,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
       await auctionTx.wait();
 
       toast.success("Auction live!", { id: toastId });
+      onNavigate('marketplace');
     } catch (err) {
       toast.error(err.reason || err.message);
     }
@@ -252,7 +250,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
       toast.loading("Placing bid...");
       await tx.wait();
       toast.success("Bid placed successfully!");
-      window.location.reload();
+      onNavigate('marketplace');
     } catch (err) {
       toast.error(err.reason || err.message);
     }
@@ -483,7 +481,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                       onClick={handleStartAuction} 
                       className="w-full button-glow flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
                     >
-                      <Gavel className="w-4 h-4" /> Start Auction
+                      {/* <Gavel className="w-4 h-4" /> */}Start Auction 
                     </motion.button>
                   </div>
                 </div>

@@ -31,14 +31,19 @@ export async function getAllNFTs() {
             const uri = await nft.tokenURI(tokenId);
             const owner = await nft.ownerOf(tokenId); // Fetch the owner
             const meta = await fetch(uri).then(res => res.json());
+            const history = await getTokenPriceHistory(i);
+            const currentPrice = history.length > 0 ? history[history.length - 1].price : 0;
 
             allNFTs.push({
                 tokenId: tokenId, // Consistent naming
-                image: meta.image,
-                name: meta.name,
-                description: meta.description,
+                ...meta,
+                // image: meta.image,
+                // name: meta.name,
+                // description: meta.description,
+                // categories: meta.categories || [],
                 seller: owner, // Map owner to seller for UI compatibility
-                categories: meta.categories || []
+                price: currentPrice.toString(),
+                priceHistory: history.length > 0 ? history : [{ date: '2024-01-01', price: 0 }] 
             });
         } catch (err) {
             console.error(`Error loading NFT ${i}:`, err);
@@ -83,4 +88,52 @@ export async function getMarketItems() {
         }
     }
     return salenft; 
+}
+
+// ... existing imports ...
+
+export async function getTokenPriceHistory(tokenId) {
+    const market = await getMarketContract();
+    
+    // 1. Define filters for events related to this token
+    const listFilter = market.filters.ItemListed(null, null, tokenId);
+    const soldFilter = market.filters.ItemSold(null);
+    const auctionFilter = market.filters.AuctionEnded(null);
+
+    // 2. Fetch logs (from block 0 to current)
+    const [listEvents, soldEvents, auctionEvents] = await Promise.all([
+        market.queryFilter(listFilter),
+        market.queryFilter(soldFilter),
+        market.queryFilter(auctionFilter)
+    ]);
+
+    const history = [];
+
+    // 3. Process Listings (Initial asks)
+    for (const event of listEvents) {
+        const block = await event.getBlock();
+        history.push({
+            date: new Date(block.timestamp * 1000).toISOString().split('T')[0],
+            price: parseFloat(ethers.formatEther(event.args.price)),
+            event: 'Listed'
+        });
+    }
+
+    // 4. Process Sales (Actual trades)
+    // We match ItemSold to ItemListed via itemId if needed, 
+    // but usually, a chronological list of prices is what's needed for charts.
+    for (const event of soldEvents) {
+        const item = await market.items(event.args.itemId);
+        if (Number(item.tokenId) === Number(tokenId)) {
+            const block = await event.getBlock();
+            history.push({
+                date: new Date(block.timestamp * 1000).toISOString().split('T')[0],
+                price: parseFloat(ethers.formatEther(event.args.price)),
+                event: 'Sold'
+            });
+        }
+    }
+
+    // Sort by date and return
+    return history.sort((a, b) => new Date(a.date) - new Date(b.date));
 }
