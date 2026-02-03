@@ -97,7 +97,7 @@ export default function App() {
       <div 
         className="fixed inset-0 z-[-1] bg-[#eff6ff]" 
         style={{
-          backgroundImage: `url('https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=2564&auto=format&fit=crop')`,
+          backgroundImage: `url('src/assets/background.png')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           opacity: 0.3 // Subtle background image
@@ -105,9 +105,10 @@ export default function App() {
       />
 
       <Navbar currentPage={currentPage} onNavigate={handleNavigate} />
+
+      <HeroSlider />
       
       <div className="relative z-10">
-        <Navbar currentPage={currentPage} onNavigate={handleNavigate} />
         <main>{renderSection()}</main>
       </div>
 

@@ -20,7 +20,7 @@ export default function HeroSlider() {
   const prevSlide = () => {
     setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
   };
-  console.log("hi")
+  // console.log("hi")
 
   return (
     <div className="w-full h-[50vh] mt-[72px] overflow-hidden absolute">
