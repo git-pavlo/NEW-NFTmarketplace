@@ -161,6 +161,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
       await tx.wait();
 
       toast.success("NFT listed successfully!");
+      onNavigate('marketplace');
     } catch (err) {
       console.error(err);
       toast.error(err.reason || err.message);
@@ -470,7 +471,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                       />
                       <input 
                         type="number" 
-                        placeholder="Hours" 
+                        placeholder="Minutes" 
                         value={auctionDuration} 
                         onChange={(e) => setAuctionDuration(e.target.value)} 
                         className="w-full px-4 py-3 rounded-2xl glassmorphism focus-glow transition-all my-4" 

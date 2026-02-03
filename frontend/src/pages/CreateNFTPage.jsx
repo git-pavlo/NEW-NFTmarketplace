@@ -10,7 +10,7 @@ import { getNFTContract, NFT_CONTRACT_ADDRESS } from '../utils/contract';
 const PINATA_API_KEY = '18233f0e183ee1001af1';
 const PINATA_SECRET_KEY = 'f1a15a17e13a181c164df487dc382ac695bdcea8e1edf97b8dfa403148102022';
 
-export default function CreateNFTPage() {
+export default function CreateNFTPage( {onNavigate} ) {
   const [uploadedFile, setUploadedFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -148,7 +148,9 @@ export default function CreateNFTPage() {
       // Reset Form
       setUploadedFile(null);
       setPreviewUrl(null);
-      setFormData({ name: '', description: '', category: 'Art', royalties: 5 });
+      setFormData({ name: '', description: '', category: 'Art', royalties: 5, creator: walletAddress, price: 0.01 });
+      console.log("nftcreator>>>", formData.creator);
+      onNavigate('profile');
       
     } catch (err) {
       console.error(err);

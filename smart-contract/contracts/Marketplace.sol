@@ -172,8 +172,8 @@ contract Marketplace is ReentrancyGuard {
         }
 
         // 2. Time Extension (Anti-Snipping)
-        // If bid is placed in the last 1 minute, extend auction by 1 minute
-        uint256 timeBuffer = 1 minutes;
+        // If bid is placed in the last 5 minute, extend auction by 1 minute
+        uint256 timeBuffer = 5 minutes;
         if (auction.endAt - block.timestamp < timeBuffer) {
             auction.endAt += timeBuffer;
         }

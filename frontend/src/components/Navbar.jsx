@@ -24,9 +24,9 @@ export default function Navbar({ currentPage, onNavigate }) {
             >
               <div className="flex items-center space-x-2">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#8a6aff] to-[#38bdf8] flex items-center justify-center">
-                  <span className="text-white">N</span>
+                  <span className="text-white">NFT</span>
                 </div>
-                <span className="text-xl neon-text">NeoMarket</span>
+                <span className="text-xl neon-text">NFT Market</span>
               </div>
             </motion.div>
 

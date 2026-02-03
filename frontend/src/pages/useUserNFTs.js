@@ -44,6 +44,7 @@ export function useUserNFTs(userAddress) {
             if (royalty[0].toLowerCase() === userAddress.toLowerCase()) {
               created.push(nftData);
             }
+            console.log(nftData);
           } catch (err) {
             console.error(`Error loading NFT ${tokenId}:`, err);
           }
