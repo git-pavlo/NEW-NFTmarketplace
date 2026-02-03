@@ -9,6 +9,7 @@ import UserProfilePage from './pages/UserProfilePage';
 import AllNFTsPage from './pages/AllNFTsPage';
 import { useAccount, useDisconnect } from "wagmi";
 import { motion } from 'motion/react';
+import HeroSlider from './components/HeroSlider';
 
 export default function App() {
   const [currentPage, setCurrentPage] = useState('landing');
