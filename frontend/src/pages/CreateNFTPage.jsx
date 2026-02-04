@@ -260,7 +260,7 @@ export default function CreateNFTPage( {onNavigate} ) {
               </label>
               <input
                 type="text"
-                placeholder="e.g. Cosmic Dream #001"
+                placeholder="e.g. Cosmic Dream"
                 value={formData.name}
                 onChange={(e) =>
                   setFormData({ ...formData, name: e.target.value })

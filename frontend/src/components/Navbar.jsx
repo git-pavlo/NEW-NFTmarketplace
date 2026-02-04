@@ -62,7 +62,7 @@ export default function Navbar({ currentPage, onNavigate }) {
                 active={currentPage === 'create'}
                 onClick={() => onNavigate('create')}
               >
-                Create
+                Mint
               </NavLink>
               <NavLink
                 active={currentPage === 'profile'}

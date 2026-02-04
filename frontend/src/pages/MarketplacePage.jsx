@@ -196,7 +196,7 @@ export default function MarketplacePage({ onNavigate }) {
                 </div>
 
                 {/* Price Range */}
-                <div className="mb-6">
+                {/* <div className="mb-6">
                   <h4 className="text-sm text-gray-400 mb-3">Price Range (ETH)</h4>
                   <input
                     type="range"
@@ -211,7 +211,7 @@ export default function MarketplacePage({ onNavigate }) {
                     <span>{priceRange[0]} ETH</span>
                     <span>{priceRange[1]} ETH</span>
                   </div>
-                </div>
+                </div> */}
 
                 <button
                   onClick={() => {

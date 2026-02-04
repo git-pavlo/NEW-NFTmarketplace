@@ -100,7 +100,7 @@ export default function App() {
           backgroundImage: `url('src/assets/background.png')`,
           backgroundSize: 'cover',
           backgroundPosition: 'center',
-          opacity: 0.3 // Subtle background image
+          opacity: 0.5 // Subtle background image
         }}
       />
 
