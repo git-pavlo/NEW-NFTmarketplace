@@ -153,7 +153,7 @@ export default function LandingPage({ onNavigate }) {
                 onClick={() => onNavigate('create')}
                 className="px-8 py-4 rounded-2xl glassmorphism hover:border-[rgba(138,106,255,0.5)] transition-all font-semibold"
               >
-                Create NFT
+                Mint NFT
               </motion.button>
             </motion.div>
           </motion.div>

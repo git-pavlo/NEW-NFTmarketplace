@@ -16,7 +16,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
   const [auctionPrice, setAuctionPrice] = useState(''); // Starting Bid
   const [auctionDuration, setAuctionDuration] = useState(''); // Hours
   const [marketItem, setMarketItem] = useState(null);
-  const [activeTab, setActiveTab] = useState('properties');
+  const [activeTab, setActiveTab] = useState('details');
   const [loading, setLoading] = useState(true); 
   const [bidAmount, setBidAmount] = useState('');
   const [pendingRefund, setPendingRefund] = useState('0');
@@ -28,6 +28,8 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         const nftContract = await getNFTContract();
         const marketplace = await getMarketContract();
         const history = await getTokenPriceHistory(nftId);
+
+        console.log(history);
         
         // Get current user address
         const signer = await (new ethers.BrowserProvider(window.ethereum)).getSigner();
@@ -43,6 +45,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         const itemCount = Number(await marketplace.itemCount());
         let foundMarketItem = null;
         let activeAuction = null;
+        console.log(itemCount);
         
         for (let i = 1; i <= itemCount; i++) {
           const item = await marketplace.items(i);
@@ -67,6 +70,8 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
           }
         }
 
+        console.log(activeAuction);
+
         // 3. Determine and Set NFT Status logic
         if (activeAuction && !activeAuction.ended) {
           setNFTStatus('auction');
@@ -78,6 +83,8 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         } else {
           setNFTStatus('view-only');
         }
+
+        console.log(foundMarketItem);
 
         setNft({ 
           id: nftId, 
@@ -135,6 +142,18 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
     return () => clearInterval(timer);
   }, [NFTstatus, auctionData]);
 
+// useEffect(() => {
+//   if (
+//     NFTstatus === 'auction' &&
+//     timeLeft.expired &&
+//     auctionData &&
+//     !auctionData.ended
+//   ) {
+//     handleEndAuction();
+//     handleWithdrawRefund();
+//   }
+// }, [timeLeft.expired]);
+
   const handleSale = async () => {
     const nftContract = await getNFTContract();
     const marketplaceContract = await getMarketContract();
@@ -147,14 +166,15 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
         MARKET_CONTRACT_ADDRESS,
         nftId
       );
-
+      console.log("Approved");
       // list
       const tx = await marketplaceContract.listItem(
         NFT_CONTRACT_ADDRESS,
         nftId,
         ethers.parseEther(price)
       );
-      toast.loading("Approve & list NFT...");
+      console.log("Listed");
+      // toast.loading("Approve & list NFT...");
       await tx.wait();
 
       toast.success("NFT listed successfully!");
@@ -283,7 +303,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
     }
   };
   
-  if (!nft) {
+  if ( loading||!nft) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -479,9 +499,9 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                       onClick={handleStartAuction} 
-                      className="w-full button-glow flex-1 py-3 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                      className="button-glow w-full py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white flex items-center justify-center gap-2"
                     >
-                      {/* <Gavel className="w-4 h-4" /> */}Start Auction 
+                      <Gavel className="w-4 h-4" /> Start Auction 
                     </motion.button>
                   </div>
                 </div>
@@ -519,7 +539,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                         onClick={handleEndAuction} 
-                        className="button-glow flex-1 py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white"
+                        className="button-glow w-full py-4 rounded-2xl bg-gradient-to-r from-[#8a6aff] to-[#38bdf8] text-white flex items-center justify-center gap-2"
                       >
                         <CheckCircle className="w-5 h-5"/> Settle & Finalize Auction
                       </motion.button>
@@ -584,7 +604,7 @@ export default function NFTDetailPage({ nftId, onNavigate }) {
             {/* Tabs */}
             <div className="glassmorphism rounded-3xl overflow-hidden">
               <div className="flex border-b border-[rgba(138,106,255,0.2)]">
-                {['properties', 'details', 'history'].map((tab) => (
+                {['details', 'history'].map((tab) => (
                   <motion.button
                     key={tab}
                     whileHover={{ backgroundColor: 'rgba(138, 106, 255, 0.1)' }}

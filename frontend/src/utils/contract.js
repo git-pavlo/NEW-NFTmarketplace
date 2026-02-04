@@ -31,7 +31,9 @@ export async function getAllNFTs() {
             const uri = await nft.tokenURI(tokenId);
             const owner = await nft.ownerOf(tokenId); // Fetch the owner
             const meta = await fetch(uri).then(res => res.json());
+            console.log(meta);
             const history = await getTokenPriceHistory(i);
+            console.log(history);
             const currentPrice = history.length > 0 ? history[history.length - 1].price : 0;
 
             allNFTs.push({
@@ -42,7 +44,8 @@ export async function getAllNFTs() {
                 // description: meta.description,
                 // categories: meta.categories || [],
                 seller: owner, // Map owner to seller for UI compatibility
-                price: currentPrice.toString(),
+                // price: ethers.formatEther(item.price),
+                peice: currentPrice,
                 priceHistory: history.length > 0 ? history : [{ date: '2024-01-01', price: 0 }] 
             });
         } catch (err) {
@@ -89,51 +92,72 @@ export async function getMarketItems() {
     }
     return salenft; 
 }
-
-// ... existing imports ...
-
 export async function getTokenPriceHistory(tokenId) {
-    const market = await getMarketContract();
-    
-    // 1. Define filters for events related to this token
-    const listFilter = market.filters.ItemListed(null, null, tokenId);
-    const soldFilter = market.filters.ItemSold(null);
-    const auctionFilter = market.filters.AuctionEnded(null);
+  const marketplace = await getMarketContract();
 
-    // 2. Fetch logs (from block 0 to current)
-    const [listEvents, soldEvents, auctionEvents] = await Promise.all([
-        market.queryFilter(listFilter),
-        market.queryFilter(soldFilter),
-        market.queryFilter(auctionFilter)
-    ]);
+  // const listedEvents = await marketplace.queryFilter(
+  //   marketplace.filters.ItemListed(null, tokenId)
+  // );
 
-    const history = [];
+  const soldEvents = await marketplace.queryFilter(
+    marketplace.filters.ItemSold(null, tokenId)
+  );
 
-    // 3. Process Listings (Initial asks)
-    for (const event of listEvents) {
-        const block = await event.getBlock();
-        history.push({
-            date: new Date(block.timestamp * 1000).toISOString().split('T')[0],
-            price: parseFloat(ethers.formatEther(event.args.price)),
-            event: 'Listed'
-        });
-    }
+  // const auctionStartedEvents = await marketplace.queryFilter(
+  //   marketplace.filters.AuctionStarted(null, tokenId)
+  // );
 
-    // 4. Process Sales (Actual trades)
-    // We match ItemSold to ItemListed via itemId if needed, 
-    // but usually, a chronological list of prices is what's needed for charts.
-    for (const event of soldEvents) {
-        const item = await market.items(event.args.itemId);
-        if (Number(item.tokenId) === Number(tokenId)) {
-            const block = await event.getBlock();
-            history.push({
-                date: new Date(block.timestamp * 1000).toISOString().split('T')[0],
-                price: parseFloat(ethers.formatEther(event.args.price)),
-                event: 'Sold'
-            });
-        }
-    }
+  const auctionEndedEvents = await marketplace.queryFilter(
+    marketplace.filters.AuctionEnded(null, tokenId)
+  );
 
-    // Sort by date and return
-    return history.sort((a, b) => new Date(a.date) - new Date(b.date));
+  let history = [];
+
+  // Fixed-price listing
+//   listedEvents.forEach(e => {
+//     history.push({
+//       type: 'LISTED',
+//       price: Number(ethers.formatEther(e.args.price)),
+//       timestamp: Number(e.args.timestamp),
+//     });
+//   });
+
+  // Fixed-price sale
+  soldEvents.forEach(e => {
+    history.push({
+      type: 'SOLD',
+      price: Number(ethers.formatEther(e.args.price)),
+      timestamp: Number(e.args.timestamp),
+    });
+  });
+
+  // Auction start (starting bid)
+//   auctionStartedEvents.forEach(e => {
+//     history.push({
+//       type: 'AUCTION_START',
+//       price: Number(ethers.formatEther(e.args.startPrice)),
+//       timestamp: Number(e.args.timestamp),
+//     });
+//   });
+
+  // Auction end (winning bid)
+  auctionEndedEvents.forEach(e => {
+    history.push({
+      type: 'AUCTION_END',
+      price: Number(ethers.formatEther(e.args.finalPrice)),
+      timestamp: Number(e.args.timestamp),
+    });
+  });
+
+  // 🔥 Sort chronologically
+  history.sort((a, b) => a.timestamp - b.timestamp);
+
+  // Format for Recharts
+  return history.map(h => ({
+    date: new Date(h.timestamp * 1000)
+      .toISOString()
+      .split('T')[0],
+    price: h.price,
+    label: h.type
+  }));
 }

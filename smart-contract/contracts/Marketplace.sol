@@ -8,8 +8,13 @@ import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 contract Marketplace is ReentrancyGuard {
     uint256 public itemCount;
-    uint256 public feePercent = 2; // 2% marketplace fee
+    uint256 public feePercent = 1; // 2% marketplace fee
     address public feeRecipient;
+
+    constructor(address _feeRecipient) {
+        require(_feeRecipient != address(0), "Invalid fee recipient");
+        feeRecipient = _feeRecipient;
+    }
 
     struct Item {
         uint256 itemId;
@@ -28,21 +33,51 @@ contract Marketplace is ReentrancyGuard {
         address indexed nft,
         uint256 indexed tokenId,
         uint256 price,
-        address seller
+        address seller,
+        uint256 timestamp
     );
 
     event ItemSold(
         uint256 indexed itemId,
+        uint256 indexed tokenId,
         address buyer,
-        uint256 price
+        uint256 price,
+        uint256 timestamp
     );
 
-    event ItemCancelled(uint256 indexed itemId);
+    event ItemCancelled(
+        uint256 indexed itemId,
+        uint256 timestamp
+    );
+    
+    event AuctionStarted(
+        uint256 indexed itemId,
+        uint256 indexed tokenId,
+        uint256 startPrice,
+        uint256 endAt,
+        uint256 timestamp
+    );
+        // uint256 endTime,
 
-    constructor(address _feeRecipient) {
-        require(_feeRecipient != address(0), "Invalid fee recipient");
-        feeRecipient = _feeRecipient;
-    }
+    event BidPlaced(
+        uint256 indexed itemId, 
+        address bidder, 
+        uint256 amount,
+        uint256 timestamp
+    );
+
+    event AuctionEnded(
+        uint256 indexed itemId, 
+        uint256 indexed tokenId,
+        address winner,
+        uint256 finalPrice,
+        uint256 timestamp
+    );
+        // uint256 amount
+
+    /*//////////////////////////////////////////////////////////////
+                          LIST & CANCEL, BUY
+    //////////////////////////////////////////////////////////////*/
 
     function listItem(
         IERC721 nft,
@@ -71,7 +106,16 @@ contract Marketplace is ReentrancyGuard {
             cancelled: false
         });
 
-        emit ItemListed(itemCount, address(nft), tokenId, price, msg.sender);
+        // emit ItemListed(itemCount, address(nft), tokenId, price, msg.sender);
+
+        emit ItemListed(
+            itemCount,
+            address(nft),
+            tokenId,
+            price,
+            msg.sender,
+            block.timestamp
+        );
     }
 
     function cancelItem(uint256 itemId) external nonReentrant {
@@ -85,7 +129,9 @@ contract Marketplace is ReentrancyGuard {
 
         item.nft.transferFrom(address(this), item.seller, item.tokenId);
 
-        emit ItemCancelled(itemId);
+        // emit ItemCancelled(itemId);
+
+        emit ItemCancelled(itemId, block.timestamp);
     }
 
     function buyItem(uint256 itemId) external payable nonReentrant {
@@ -96,37 +142,51 @@ contract Marketplace is ReentrancyGuard {
         require(!item.cancelled, "Item cancelled");
         require(msg.value == item.price, "Send exact price");
 
+        _handlePayout(item, msg.value);
+
         item.sold = true;
 
-        uint256 fee = (item.price * feePercent) / 100;
-        uint256 royaltyAmount = 0;
-        address royaltyReceiver;
+        // uint256 fee = (item.price * feePercent) / 100;
+        // uint256 royaltyAmount = 0;
+        // address royaltyReceiver;
 
-        if (
-            IERC165(address(item.nft)).supportsInterface(
-                type(IERC2981).interfaceId
-            )
-        ) {
-            (royaltyReceiver, royaltyAmount) = IERC2981(address(item.nft))
-                .royaltyInfo(item.tokenId, item.price);
-        }
+        // if (
+        //     IERC165(address(item.nft)).supportsInterface(
+        //         type(IERC2981).interfaceId
+        //     )
+        // ) {
+        //     (royaltyReceiver, royaltyAmount) = IERC2981(address(item.nft))
+        //         .royaltyInfo(item.tokenId, item.price);
+        // }
 
-        require(fee + royaltyAmount <= item.price, "Fees exceed price");
+        // require(fee + royaltyAmount <= item.price, "Fees exceed price");
 
-        uint256 sellerProceeds = item.price - fee - royaltyAmount;
+        // uint256 sellerProceeds = item.price - fee - royaltyAmount;
 
-        payable(feeRecipient).transfer(fee);
+        // payable(feeRecipient).transfer(fee);
 
-        if (royaltyAmount > 0 && royaltyReceiver != address(0)) {
-            payable(royaltyReceiver).transfer(royaltyAmount);
-        }
+        // if (royaltyAmount > 0 && royaltyReceiver != address(0)) {
+        //     payable(royaltyReceiver).transfer(royaltyAmount);
+        // }
 
-        item.seller.transfer(sellerProceeds);
+        // item.seller.transfer(sellerProceeds);
 
         item.nft.transferFrom(address(this), msg.sender, item.tokenId);
 
-        emit ItemSold(itemId, msg.sender, item.price);
+        // emit ItemSold(itemId, msg.sender, item.price);
+
+        emit ItemSold(
+            itemId,
+            item.tokenId,
+            msg.sender,
+            item.price,
+            block.timestamp
+        );
     }
+
+    /*//////////////////////////////////////////////////////////////
+                            AUCTIONS
+    //////////////////////////////////////////////////////////////*/
 
     struct Auction {
         uint256 itemId;
@@ -137,10 +197,7 @@ contract Marketplace is ReentrancyGuard {
     }
 
     mapping(uint256 => Auction) public auctions;
-
-    event AuctionStarted(uint256 indexed itemId, uint256 endTime);
-    event BidPlaced(uint256 indexed itemId, address bidder, uint256 amount);
-    event AuctionEnded(uint256 indexed itemId, address winner, uint256 amount);
+    mapping(address => uint256) public pendingWithdrawals; 
 
     function startAuction(uint256 itemId, uint256 durationInHours) external {
         Item storage item = items[itemId];
@@ -155,10 +212,16 @@ contract Marketplace is ReentrancyGuard {
             ended: false
         });
         
-        emit AuctionStarted(itemId, auctions[itemId].endAt);
-    }
+        // emit AuctionStarted(itemId, auctions[itemId].endAt);
 
-    mapping(address => uint256) public pendingWithdrawals; // For Pull pattern refunds
+        emit AuctionStarted(
+            itemId,
+            item.tokenId,
+            item.price,
+            auctions[itemId].endAt,
+            block.timestamp
+        );
+    }
 
     function placeBid(uint256 itemId) external payable nonReentrant {
         Auction storage auction = auctions[itemId];
@@ -175,13 +238,92 @@ contract Marketplace is ReentrancyGuard {
         // If bid is placed in the last 5 minute, extend auction by 1 minute
         uint256 timeBuffer = 5 minutes;
         if (auction.endAt - block.timestamp < timeBuffer) {
-            auction.endAt += timeBuffer;
+            auction.endAt = block.timestamp + timeBuffer;
         }
 
         auction.highestBidder = payable(msg.sender);
         auction.highestBid = msg.value;
 
-        emit BidPlaced(itemId, msg.sender, msg.value);
+        // emit BidPlaced(itemId, msg.sender, msg.value);
+
+        emit BidPlaced(
+            itemId,
+            msg.sender,
+            msg.value,
+            block.timestamp
+        );
+    }
+
+    function endAuction(uint256 itemId) external nonReentrant {
+        Auction storage auction = auctions[itemId];
+        Item storage item = items[itemId];
+
+        require(block.timestamp >= auction.endAt, "Auction not ended");
+        require(!auction.ended, "Already settled");
+
+        auction.ended = true;
+
+        if (auction.highestBidder != address(0)) {
+            _handlePayout(item, auction.highestBid);
+
+            // Transfer NFT to winner and funds to seller
+            item.sold = true;
+            item.nft.transferFrom(address(this), auction.highestBidder, item.tokenId);
+            item.seller.transfer(auction.highestBid);
+            // (bool success, ) = payable(item.seller).call{value: auction.highestBid}("");
+            // require(success, "ETH transfer to seller failed");
+        } else {
+            // No bids? Return NFT to seller
+            item.nft.transferFrom(address(this), item.seller, item.tokenId);
+        }
+
+        // emit AuctionEnded(itemId, auction.highestBidder, auction.highestBid);
+
+        emit AuctionEnded(
+            itemId,
+            item.tokenId,
+            auction.highestBidder,
+            auction.highestBid,
+            block.timestamp
+        );
+    }
+
+    /*//////////////////////////////////////////////////////////////
+                          PAYOUT LOGIC
+    //////////////////////////////////////////////////////////////*/
+
+    function _handlePayout(Item storage item, uint256 amount) internal {
+        uint256 fee = (amount * feePercent) / 100;
+
+        uint256 royaltyAmount = 0;
+        address royaltyReceiver;
+
+        if (
+            IERC165(address(item.nft)).supportsInterface(
+                type(IERC2981).interfaceId
+            )
+        ) {
+            (royaltyReceiver, royaltyAmount) =
+                IERC2981(address(item.nft)).royaltyInfo(item.tokenId, amount);
+        }
+
+        require(fee + royaltyAmount <= amount, "Invalid fees");
+
+        payable(feeRecipient).transfer(fee);
+        // (bool success, ) = payable(feeRecipient).call{value: fee}("");
+        // require(success, "Transfer failed");
+
+        if (royaltyAmount > 0 && royaltyReceiver != address(0)) {
+            payable(royaltyReceiver).transfer(royaltyAmount);
+            // ( success, ) = payable(royaltyReceiver).call{value: royaltyAmount}("");
+            // require(success, "Transfer failed");
+        }
+
+        item.seller.transfer(amount - fee - royaltyAmount);
+        // uint256 payout = amount - fee - royaltyAmount;
+
+        // ( success, ) = payable(item.seller).call{value: payout}("");
+        // require(success, "Seller payout failed");
     }
 
     // Function for users to manually claim their refunds
@@ -192,26 +334,5 @@ contract Marketplace is ReentrancyGuard {
         pendingWithdrawals[msg.sender] = 0;
         (bool success, ) = payable(msg.sender).call{value: amount}("");
         require(success, "Transfer failed");
-    }
-
-    function endAuction(uint256 itemId) external nonReentrant {
-        Auction storage auction = auctions[itemId];
-        Item storage item = items[itemId];
-        require(block.timestamp >= auction.endAt, "Auction not ended");
-        require(!auction.ended, "Already settled");
-
-        auction.ended = true;
-
-        if (auction.highestBidder != address(0)) {
-            // Transfer NFT to winner and funds to seller
-            item.sold = true;
-            item.nft.transferFrom(address(this), auction.highestBidder, item.tokenId);
-            item.seller.transfer(auction.highestBid);
-        } else {
-            // No bids? Return NFT to seller
-            item.nft.transferFrom(address(this), item.seller, item.tokenId);
-        }
-
-        emit AuctionEnded(itemId, auction.highestBidder, auction.highestBid);
     }
 }
