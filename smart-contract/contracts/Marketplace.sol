@@ -129,8 +129,6 @@ contract Marketplace is ReentrancyGuard {
 
         item.nft.transferFrom(address(this), item.seller, item.tokenId);
 
-        // emit ItemCancelled(itemId);
-
         emit ItemCancelled(itemId, block.timestamp);
     }
 
