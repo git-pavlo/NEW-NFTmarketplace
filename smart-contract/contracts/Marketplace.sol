@@ -144,31 +144,6 @@ contract Marketplace is ReentrancyGuard {
 
         item.sold = true;
 
-        // uint256 fee = (item.price * feePercent) / 100;
-        // uint256 royaltyAmount = 0;
-        // address royaltyReceiver;
-
-        // if (
-        //     IERC165(address(item.nft)).supportsInterface(
-        //         type(IERC2981).interfaceId
-        //     )
-        // ) {
-        //     (royaltyReceiver, royaltyAmount) = IERC2981(address(item.nft))
-        //         .royaltyInfo(item.tokenId, item.price);
-        // }
-
-        // require(fee + royaltyAmount <= item.price, "Fees exceed price");
-
-        // uint256 sellerProceeds = item.price - fee - royaltyAmount;
-
-        // payable(feeRecipient).transfer(fee);
-
-        // if (royaltyAmount > 0 && royaltyReceiver != address(0)) {
-        //     payable(royaltyReceiver).transfer(royaltyAmount);
-        // }
-
-        // item.seller.transfer(sellerProceeds);
-
         item.nft.transferFrom(address(this), msg.sender, item.tokenId);
 
         // emit ItemSold(itemId, msg.sender, item.price);
